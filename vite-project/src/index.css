@@ -1,0 +1,96 @@
+/* src/index.css */
+
+/* 1. Tailwind 기본 지시문 */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* 2. 원본 HTML의 <style> 블록에서 가져온 커스텀 CSS */
+body {
+  font-family: "Inter", sans-serif;
+}
+
+.modal-backdrop {
+  background-color: rgba(0, 0, 0, 0.5);
+}
+
+.infowindow-content {
+  padding: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  font-size: 0.875rem;
+}
+
+.infowindow-content img {
+  width: 64px;
+  height: 64px;
+  border-radius: 0.5rem;
+  object-fit: cover;
+}
+
+.infowindow-status {
+  display: inline-block;
+  padding: 0.125rem 0.5rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  margin-right: 0.5rem;
+}
+
+/* 🚩 색상 변경: 실종은 red, 보호는 blue 톤 유지 */
+.infowindow-status.missing {
+  background-color: #fecaca;
+  color: #b91c1c;
+}
+.infowindow-status.protected {
+  background-color: #dbeafe;
+  color: #1e40af;
+}
+
+.status-badge {
+  display: inline-block;
+  padding: 0.25rem 0.75rem;
+  border-radius: 9999px;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+/* 🚩 색상 변경: 실종은 red, 보호는 blue 톤 유지 */
+.status-badge.missing {
+  background-color: #fee2e2;
+  color: #dc2626;
+}
+.status-badge.protected {
+  background-color: #dbeafe;
+  color: #2563eb;
+}
+
+.announcement-list::-webkit-scrollbar {
+  width: 8px;
+}
+
+.announcement-list::-webkit-scrollbar-track {
+  background: #f1f5f9;
+}
+
+.announcement-list::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 10px;
+}
+
+.announcement-list::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* 드롭다운 메뉴 스타일 */
+.dropdown-menu {
+  min-width: 160px;
+}
+
+/* 네비게이션 항목 높이 일관성 */
+.nav-item {
+  display: flex;
+  align-items: center;
+  height: 80px;
+}
