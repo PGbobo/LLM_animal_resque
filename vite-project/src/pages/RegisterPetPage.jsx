@@ -3,6 +3,20 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router";
 import { useAuth } from "../hooks/useAuth"; // 로그인 훅
 
+// ◀◀ [1. 신규 추가] Base64 헬퍼 함수
+// AI 서버(`/api/search`)에 Base64 문자열을 보내기 위해 필요합니다.
+const fileToBase64 = (file) =>
+  new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = () => {
+      // "data:image/jpeg;base64," 부분을 잘라내고 순수 Base64만 반환
+      const base64String = reader.result.split(",")[1];
+      resolve(base64String);
+    };
+    reader.onerror = (error) => reject(error);
+  });
+
 export default function RegisterPetPage() {
   const navigate = useNavigate();
   const { user, token } = useAuth();
@@ -19,6 +33,9 @@ export default function RegisterPetPage() {
   const [address, setAddress] = useState("");
   const [contact, setContact] = useState("");
   const [coords, setCoords] = useState({ lat: null, lon: null });
+
+  // 로딩 상태 (API 호출 중에 true가 됨)
+  const [isLoading, setIsLoading] = useState(false);
 
   // Kakao Map
   const mapRef = useRef(null);
@@ -100,6 +117,10 @@ export default function RegisterPetPage() {
   // 제출
   const onSubmit = async (e) => {
     e.preventDefault();
+
+    // 로딩 중 중복 실행 방지
+    if (isLoading) return;
+
     if (!user || !token) {
       alert("로그인이 필요합니다.");
       navigate("/login");
@@ -110,6 +131,9 @@ export default function RegisterPetPage() {
     if (!lostDate) return alert("실종 날짜를 선택해 주세요.");
     if (!coords.lat || !address)
       return alert("지도에서 실종 장소를 선택해 주세요.");
+
+    // 로딩 상태 '시작'
+    setIsLoading(true);
 
     const formData = new FormData();
     formData.append("petName", name);
@@ -145,17 +169,83 @@ export default function RegisterPetPage() {
         : {};
       if (!data?.success) throw new Error(data?.message || "저장 실패");
 
-      alert("실종등록이 완료되었습니다");
-      navigate("/");
+      // --- [신규 로직] 2. 'AI 유사도 검색' 요청 ---
+      // (중요) 사진이 첨부된 경우(photoFile)에만 AI 검색을 실행합니다.
+      if (photoFile) {
+        console.log("실종 등록 성공. AI 유사도 분석을 시작합니다.");
+
+        // 2-1. Base64 변환 (1단계에서 추가한 함수 사용)
+        const imageBase64 = await fileToBase64(photoFile);
+
+        // 2-2. AI 서버(`/api/search`) 호출
+        const aiResp = await fetch(`http://211.188.57.154:5000/api/search`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ image_base64: imageBase64 }),
+        });
+
+        if (!aiResp.ok) {
+          const errorData = await aiResp.json().catch(() => ({}));
+          // AI 검색이 실패해도, 실종 등록은 이미 성공했으므로
+          // 오류만 알리고 홈으로 이동시킵니다.
+          throw new Error(errorData.error || `AI 서버 오류: ${aiResp.status}`);
+        }
+
+        const aiData = await aiResp.json();
+
+        // 2-3. (Task 2) AI 검색 성공! 결과 페이지로 이동
+        // alert("실종등록이 완료되었으며, AI 분석 결과 페이지로 이동합니다.");
+        // SearchResultPage.jsx로 results 데이터를 state로 전달
+        navigate("/search-results", { state: { results: aiData.results } });
+      } else {
+        // (기존 로직) 사진이 없으므로, 등록만 하고 홈으로 이동
+        alert("실종등록이 완료되었습니다");
+        navigate("/");
+      }
     } catch (err) {
       console.error("등록 실패:", err);
       alert("저장 중 오류: " + err.message);
+    } finally {
+      // 로딩 상태 '끝'
+      setIsLoading(false);
     }
   };
 
   // 렌더
   return (
     <main className="pt-28 pb-16 bg-slate-50 text-slate-800">
+      {/* ◀◀ [신규 추가] 로딩 오버레이 */}
+      {isLoading && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="text-white text-xl font-bold p-8 bg-sky-500 rounded-lg shadow-xl">
+            {/* (간단한 스피너 애니메이션) */}
+            <svg
+              className="animate-spin h-8 w-8 text-white mx-auto mb-4"
+              xmlns="http://www.w3.org/2000/svg"
+              fill="none"
+              viewBox="0 0 24 24"
+            >
+              <circle
+                className="opacity-25"
+                cx="12"
+                cy="12"
+                r="10"
+                stroke="currentColor"
+                strokeWidth="4"
+              ></circle>
+              <path
+                className="opacity-75"
+                fill="currentColor"
+                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
+              ></path>
+            </svg>
+            AI가 분석 중입니다...
+            <br />
+            (최대 30초 소요)
+          </div>
+        </div>
+      )}
+      {/* ◀◀ 로딩 오버레이 끝 */}
       <section className="container mx-auto px-4 sm:px-6 lg:px-8">
         <div className="max-w-4xl mx-auto bg-white p-8 rounded-2xl shadow-lg border border-slate-200">
           <h1 className="text-3xl font-extrabold text-sky-500 mb-2">
@@ -344,15 +434,17 @@ export default function RegisterPetPage() {
               <button
                 type="button"
                 onClick={() => navigate("/")}
+                disabled={isLoading}
                 className="px-8 py-3 text-lg font-bold text-slate-700 bg-slate-200 rounded-lg hover:bg-slate-300"
               >
                 취소
               </button>
               <button
                 type="submit"
+                disabled={isLoading}
                 className="px-8 py-3 text-lg font-bold text-white bg-sky-400 rounded-lg hover:bg-sky-500"
               >
-                등록하기
+                {isLoading ? "처리 중..." : "등록하기"}
               </button>
             </div>
           </form>

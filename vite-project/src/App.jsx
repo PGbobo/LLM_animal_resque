@@ -19,6 +19,7 @@ import ShelterPage from "./pages/ShelterPage.jsx";
 import HospitalPage from "./pages/HospitalPage.jsx";
 import CommunityListPage from "./pages/community/CommunityListPage.jsx";
 import CommunityDetailPage from "./pages/community/CommunityDetailPage.jsx";
+import SearchResultPage from "./pages/SearchResultPage.jsx";
 
 // 마이페이지
 import EditProfilePage from "./pages/mypage/EditProfilePage.jsx";
@@ -57,6 +58,9 @@ function App() {
             {/* ✅ 커뮤니티 상세 페이지 */}
             <Route path="community" element={<CommunityListPage />} />
             <Route path="community/:postId" element={<CommunityDetailPage />} />
+
+            {/* 검색 결과 페이지 */}
+            <Route path="search-results" element={<SearchResultPage />} />
 
             {/* 잘못된 경로 → 홈으로 리다이렉트 */}
             <Route path="*" element={<Navigate to="/" replace />} />
