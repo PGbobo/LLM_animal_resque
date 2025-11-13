@@ -40,53 +40,19 @@ const Header = () => {
 
             {/* 네비게이션 (Link 컴포넌트 사용) */}
             <nav className="hidden lg:flex lg:items-center lg:space-x-8 h-20">
-              <div className="nav-item">
+              {/* <div className="nav-item">
                 <Link
                   to="/IntroPage" // 🚩 intro.jsx
                   className="text-lg text-gray-700 hover:text-sky-400 transition-colors font-medium whitespace-nowrap"
                 >
                   서비스소개
                 </Link>
-              </div>
+              </div> */}
 
               {/* 조회 서비스 드롭다운 */}
               <div className="nav-item relative group">
                 <button className="text-lg text-gray-700 hover:text-sky-400 transition-colors font-medium whitespace-nowrap flex items-center">
-                  조회 서비스
-                  <svg
-                    className="w-5 h-5 ml-2"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth="2"
-                      d="M19 9l-7 7-7-7"
-                    ></path>
-                  </svg>
-                </button>
-                <div className="absolute left-0 top-20 w-56 bg-white rounded-md shadow-lg py-2 z-10 hidden group-hover:block dropdown-menu">
-                  <Link
-                    to="/reported-pets"
-                    className="block px-5 py-3 text-base text-gray-700 hover:bg-gray-100"
-                  >
-                    실종/목격 동물 조회
-                  </Link>
-                  <Link
-                    to="/abandoned-pets"
-                    className="block px-5 py-3 text-base text-gray-700 hover:bg-gray-100"
-                  >
-                    유기동물 조회
-                  </Link>
-                </div>
-              </div>
-
-              {/* 등록/제보 드롭다운 */}
-              <div className="nav-item relative group">
-                <button className="text-lg text-gray-700 hover:text-sky-400 transition-colors font-medium whitespace-nowrap flex items-center">
-                  등록/제보
+                  실종
                   <svg
                     className="w-5 h-5 ml-2"
                     fill="none"
@@ -109,10 +75,44 @@ const Header = () => {
                     실종 동물 등록
                   </Link>
                   <Link
+                    to="/reported-pets"
+                    className="block px-5 py-3 text-base text-gray-700 hover:bg-gray-100"
+                  >
+                    실종 동물 조회
+                  </Link>
+                </div>
+              </div>
+
+              {/* 등록/제보 드롭다운 */}
+              <div className="nav-item relative group">
+                <button className="text-lg text-gray-700 hover:text-sky-400 transition-colors font-medium whitespace-nowrap flex items-center">
+                  제보
+                  <svg
+                    className="w-5 h-5 ml-2"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth="2"
+                      d="M19 9l-7 7-7-7"
+                    ></path>
+                  </svg>
+                </button>
+                <div className="absolute left-0 top-20 w-56 bg-white rounded-md shadow-lg py-2 z-10 hidden group-hover:block dropdown-menu">
+                  <Link
                     to="/report-sighting"
                     className="block px-5 py-3 text-base text-gray-700 hover:bg-gray-100"
                   >
-                    우리 동네 동물 제보
+                    실종 동물 제보
+                  </Link>
+                  <Link
+                    to="/reported-pets"
+                    className="block px-5 py-3 text-base text-gray-700 hover:bg-gray-100"
+                  >
+                    제보 동물 조회
                   </Link>
                 </div>
               </div>
@@ -120,7 +120,7 @@ const Header = () => {
               {/* 보호소/병원 드롭다운 */}
               <div className="nav-item relative group">
                 <button className="text-lg text-gray-700 hover:text-sky-400 transition-colors font-medium whitespace-nowrap flex items-center">
-                  보호소/병원
+                  입양
                   <svg
                     className="w-5 h-5 ml-2"
                     fill="none"
@@ -140,13 +140,13 @@ const Header = () => {
                     to="/shelters"
                     className="block px-5 py-3 text-base text-gray-700 hover:bg-gray-100"
                   >
-                    보호소
+                    AI 입양 추천
                   </Link>
                   <Link
-                    to="/hospitals"
+                    to="/abandoned-pets"
                     className="block px-5 py-3 text-base text-gray-700 hover:bg-gray-100"
                   >
-                    동물병원 위치
+                    보호소 동물 보러가기
                   </Link>
                 </div>
               </div>

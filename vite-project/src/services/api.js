@@ -1,9 +1,9 @@
+// src/services/api.js
+
 import axios from "axios";
 
-// 1단계에서 켠 백엔드 API 서버의 주소
 const API_BASE_URL = "http://localhost:4000";
 
-// 1. 기본 axios 인스턴스 생성
 const api = axios.create({
   baseURL: API_BASE_URL,
   headers: {
@@ -11,13 +11,12 @@ const api = axios.create({
   },
 });
 
-// [중요] API 요청을 보낼 때마다 자동으로 토큰을 헤더에 추가
+// 요청 인터셉터: 모든 요청에 토큰 자동 추가
 api.interceptors.request.use(
   (config) => {
-    // 🔽 [수정] localStorage -> sessionStorage
-    const token = sessionStorage.getItem("authToken"); // 브라우저에 저장된 토큰
+    const token = sessionStorage.getItem("authToken");
     if (token) {
-      config.headers["Authorization"] = `Bearer ${token}`;
+      config.headers.Authorization = `Bearer ${token}`;
     }
     return config;
   },
@@ -26,39 +25,39 @@ api.interceptors.request.use(
   }
 );
 
-// ------------------------------------
-// API 호출 함수들 (export가 붙어있는지 확인!)
-// ------------------------------------
-
-/**
- * 회원가입 API 호출
- */
-export const registerUser = (userData) => {
-  return api.post("/register", userData);
+// 일반 로그인
+export const loginUser = async (credentials) => {
+  return await api.post("/login", credentials);
 };
 
-/**
- * 로그인 API 호출
- */
-export const loginUser = (loginData) => {
-  return api.post("/login", loginData);
+// ⭐️ 구글 소셜 로그인
+export const googleLogin = async (credential) => {
+  return await api.post("/auth/google", { credential });
 };
 
-/**
- * 로그아웃 (토큰 삭제)
- */
+// 로그아웃
 export const logoutUser = () => {
-  // 🔽 [수정] localStorage -> sessionStorage
   sessionStorage.removeItem("authToken");
-  // (필요시) 로그인 페이지로 강제 이동
-  // window.location.href = '/login';
 };
 
-/**
- * [신규] 유기동물 목록 데이터 가져오기 (StrayDogPage용)
- */
-export const getStrayDogs = () => {
-  return api.get("/stray-dogs");
+// 회원가입
+export const registerUser = async (userData) => {
+  return await api.post("/register", userData);
+};
+
+// 실종동물 등록
+export const registerLostPet = async (petData) => {
+  return await api.post("/lost-pets", petData);
+};
+
+// 동물 제보 등록
+export const registerReport = async (reportData) => {
+  return await api.post("/reports", reportData);
+};
+
+// 유기견 목록 조회
+export const getStrayDogs = async () => {
+  return await api.get("/stray-dogs");
 };
 
 export default api;

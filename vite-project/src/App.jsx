@@ -60,6 +60,12 @@ function App() {
             <Route path="community" element={<CommunityListPage />} />
             <Route path="community/:postId" element={<CommunityDetailPage />} />
 
+            {/* 소셜 로그인 콜백 */}
+            <Route
+              path="auth/google/callback"
+              element={<Navigate to="/" replace />}
+            />
+
             {/* 검색 결과 페이지 */}
             <Route path="search-results" element={<SearchResultPage />} />
 

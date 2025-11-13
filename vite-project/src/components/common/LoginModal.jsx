@@ -1,39 +1,44 @@
 // src/components/common/LoginModal.jsx
 
 import React, { useState } from "react";
-// 👇 [수정] 'useAuth is not defined' 오류 해결을 위해 이 줄을 추가했습니다.
 import { useAuth } from "../../hooks/useAuth.js";
-
-// (참고) 소셜 로그인 아이콘이 있다면 import가 더 있을 수 있습니다.
-// import GoogleLogo from "../../assets/icons/google-logo.svg";
-// import KakaoLogo from "../../assets/icons/kakao-logo.svg";
-// import NaverLogo from "../../assets/icons/naver-logo.svg";
+import { GoogleLogin } from "@react-oauth/google"; // 🔥 구글 로그인 추가
 
 const LoginModal = ({ isOpen, onClose }) => {
   const [id, setId] = useState("");
   const [password, setPassword] = useState("");
-  // 👇 이 코드가 작동하기 위해 import { useAuth }가 필요합니다.
-  const { login } = useAuth();
+  const { login, loginWithGoogle } = useAuth(); // 🔥 loginWithGoogle 추가
 
   if (!isOpen) return null;
 
-  // 1. handleSubmit을 async 함수로 변경
+  // 일반 로그인
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      // 2. AuthProvider의 login 함수를 await으로 호출
       await login(id, password);
-
-      // 3. 로그인 성공 시
       setId("");
       setPassword("");
-      onClose(); // 모달 닫기
+      onClose();
     } catch (error) {
-      // 4. 로그인 실패 시 (AuthContext에서 throw한 에러)
       alert(
         error.response?.data?.message || "아이디 또는 비밀번호가 틀립니다."
       );
     }
+  };
+
+  // 🔥 구글 로그인 성공 처리
+  const handleGoogleSuccess = async (credentialResponse) => {
+    try {
+      await loginWithGoogle(credentialResponse.credential);
+      onClose();
+    } catch (error) {
+      alert(error.response?.data?.message || "구글 로그인에 실패했습니다.");
+    }
+  };
+
+  // 🔥 구글 로그인 실패 처리
+  const handleGoogleError = () => {
+    alert("구글 로그인에 실패했습니다. 다시 시도해주세요.");
   };
 
   // 모달 바깥 클릭 시 닫기
@@ -108,22 +113,31 @@ const LoginModal = ({ isOpen, onClose }) => {
           </button>
         </form>
 
-        {/* (참고) 소셜 로그인 버튼이 있던 부분 */}
+        {/* 🔥 소셜 로그인 섹션 */}
         <div className="mt-6">
-          <p className="text-center text-sm text-gray-500 mb-4">
-            소셜 계정으로 간편하게 로그인
-          </p>
-          <div className="flex justify-center space-x-4">
-            {/* <button className="p-3 border rounded-full hover:bg-gray-100">
-              <img src={GoogleLogo} alt="Google" className="w-6 h-6" />
-            </button>
-            <button className="p-3 border rounded-full hover:bg-gray-100">
-              <img src={KakaoLogo} alt="Kakao" className="w-6 h-6" />
-            </button>
-            <button className="p-3 border rounded-full hover:bg-gray-100">
-              <img src={NaverLogo} alt="Naver" className="w-6 h-6" />
-            </button>
-            */}
+          <div className="relative">
+            <div className="absolute inset-0 flex items-center">
+              <div className="w-full border-t border-gray-300"></div>
+            </div>
+            <div className="relative flex justify-center text-sm">
+              <span className="px-2 bg-white text-gray-500">
+                또는 소셜 계정으로 로그인
+              </span>
+            </div>
+          </div>
+
+          <div className="mt-4 flex justify-center">
+            {/* 🔥 구글 로그인 버튼 */}
+            <GoogleLogin
+              onSuccess={handleGoogleSuccess}
+              onError={handleGoogleError}
+              useOneTap
+              theme="outline"
+              size="large"
+              text="signin_with"
+              shape="rectangular"
+              width="350"
+            />
           </div>
         </div>
       </div>
@@ -131,5 +145,4 @@ const LoginModal = ({ isOpen, onClose }) => {
   );
 };
 
-// 👇 [수정] 'export default'가 빠졌을 경우를 대비해 포함시켰습니다.
 export default LoginModal;
