@@ -20,6 +20,7 @@ import HospitalPage from "./pages/HospitalPage.jsx";
 import CommunityListPage from "./pages/community/CommunityListPage.jsx";
 import CommunityDetailPage from "./pages/community/CommunityDetailPage.jsx";
 import SearchResultPage from "./pages/SearchResultPage.jsx";
+import AdoptionPage from "./pages/AdoptionPage.jsx";
 
 // 마이페이지
 import EditProfilePage from "./pages/mypage/EditProfilePage.jsx";
@@ -61,6 +62,9 @@ function App() {
 
             {/* 검색 결과 페이지 */}
             <Route path="search-results" element={<SearchResultPage />} />
+
+            {/* 입양 페이지 */}
+            <Route path="adopt" element={<AdoptionPage />} />
 
             {/* 잘못된 경로 → 홈으로 리다이렉트 */}
             <Route path="*" element={<Navigate to="/" replace />} />
