@@ -137,7 +137,7 @@ const Header = () => {
                 </button>
                 <div className="absolute left-0 top-20 w-56 bg-white rounded-md shadow-lg py-2 z-10 hidden group-hover:block dropdown-menu">
                   <Link
-                    to="/shelters"
+                    to="/adopt"
                     className="block px-5 py-3 text-base text-gray-700 hover:bg-gray-100"
                   >
                     AI 입양 추천
