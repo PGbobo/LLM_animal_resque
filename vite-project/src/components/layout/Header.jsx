@@ -7,7 +7,7 @@ import LoginModal from "../common/LoginModal.jsx";
 import SignupModal from "../common/SignupModal.jsx";
 
 const Header = () => {
-  const { isLoggedIn, logout } = useAuth();
+  const { isLoggedIn, logout, user } = useAuth();
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
   const [isSignupModalOpen, setIsSignupModalOpen] = useState(false);
 
@@ -180,7 +180,12 @@ const Header = () => {
                   </button>
                 </div>
               ) : (
-                <div id="user-actions" className="flex items-center space-x-3">
+                <div id="user-actions" className="flex items-center space-x-4">
+                  {user && (
+                    <span className="text-lg font-medium text-gray-800">
+                      {user.nickname}님
+                    </span>
+                  )}
                   {/* 🚩 1. 마이페이지 드롭다운 (수정됨) */}
                   {/* h-20과 flex, items-center를 추가해 group 영역을 헤더 높이만큼 채웁니다. */}
                   <div className="relative group h-20 flex items-center">
