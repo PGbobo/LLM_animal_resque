@@ -183,7 +183,7 @@ const Header = () => {
                 <div id="user-actions" className="flex items-center space-x-4">
                   {user && (
                     <span className="text-lg font-medium text-gray-800">
-                      {user.nickname}님
+                      <span className="text-sky-400">{user.nickname}</span>님
                     </span>
                   )}
                   {/* 🚩 1. 마이페이지 드롭다운 (수정됨) */}
