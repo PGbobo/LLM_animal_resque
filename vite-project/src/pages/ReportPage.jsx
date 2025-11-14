@@ -3,6 +3,20 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router";
 import { useAuth } from "../hooks/useAuth";
 
+// ◀◀ [1. 신규 추가] Base64 헬퍼 함수
+// AI 서버(`/api/report_sighting`)에 Base64 문자열을 보내기 위해 필요합니다.
+const fileToBase64 = (file) =>
+  new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = () => {
+      // "data:image/jpeg;base64," 부분을 잘라내고 순수 Base64만 반환
+      const base64String = reader.result.split(",")[1];
+      resolve(base64String);
+    };
+    reader.onerror = (error) => reject(error);
+  });
+
 export default function ReportPage() {
   const navigate = useNavigate();
   const { user, token } = useAuth();
@@ -17,6 +31,9 @@ export default function ReportPage() {
   const [address, setAddress] = useState("");
   const [contact, setContact] = useState("");
   const [coords, setCoords] = useState({ lat: null, lon: null });
+
+  // 로딩 상태
+  const [isLoading, setIsLoading] = useState(false);
 
   // Kakao Map
   const mapRef = useRef(null);
@@ -97,6 +114,10 @@ export default function ReportPage() {
   // 제출
   const onSubmit = async (e) => {
     e.preventDefault();
+
+    // ◀ [신규] 로딩 중 중복 클릭 방지
+    if (isLoading) return;
+
     if (!user || !token) {
       alert("로그인이 필요합니다.");
       navigate("/login");
@@ -108,6 +129,18 @@ export default function ReportPage() {
       return alert("지도에서 목격 장소를 선택해 주세요.");
     }
     if (!contact.trim()) return alert("연락처를 입력해 주세요.");
+
+    // ◀ [신규] AI 분석을 위한 최소 조건 검사
+    const hasPhoto = !!photoFile;
+    const hasText = desc && desc.trim() !== "";
+    if (!hasPhoto && !hasText) {
+      return alert(
+        "AI 분석을 위해 '사진' 또는 '설명' 중 하나는 반드시 입력해야 합니다."
+      );
+    }
+
+    // ◀ [신규] 로딩 상태 '시작'
+    setIsLoading(true);
 
     const dogCat =
       species === "dog" ? "DOG" : species === "cat" ? "CAT" : "OTHER";
@@ -132,6 +165,9 @@ export default function ReportPage() {
     formData.append("lon", coords.lon);
     if (photoFile) formData.append("photo", photoFile, photoFile.name); // PHOTO
 
+    let teamReportSuccess = false;
+
+    // --- 1. (기존) 팀 백엔드 '제보 등록' 시도 ---
     try {
       const resp = await fetch(`${API_BASE}/reports`, {
         method: "POST",
@@ -152,25 +188,107 @@ export default function ReportPage() {
         : {};
       if (!data?.success) throw new Error(data?.message || "저장 실패");
 
-      alert("제보가 등록되었습니다");
-      navigate("/");
+      console.log("팀 백엔드 제보 등록 성공.");
+      teamReportSuccess = true;
     } catch (err) {
-      console.error("제보 등록 실패:", err);
-      alert("저장 중 오류: " + err.message);
+      // ◀◀ [수정됨] 'alert' 대신 'console.warn' (조용한 경고)으로 변경
+      console.warn(
+        `[1/2] 팀 서버 제보 등록 실패 (AI 분석은 계속 진행): ${err.message}`
+      );
+      // ◀ "동물 제보 API 미구현" 오류가 여기서 잡힘 (이제 alert 안 뜸)
+      // alert(
+      //   `[1/2] 팀 서버 제보 등록 실패: ${err.message}\n\n(AI 분석을 계속합니다)`
+      // );
+    }
+
+    // --- 2. (신규) 'AI 실종동물 매칭' 시도 ---
+    try {
+      console.log("AI 실종동물 매칭을 시작합니다.");
+
+      const aiPayload = {};
+      if (hasPhoto) {
+        aiPayload.image_base64 = await fileToBase64(photoFile);
+      }
+      if (hasText) {
+        aiPayload.query_text = desc;
+      }
+
+      const aiResp = await fetch(
+        `http://211.188.57.154:5000/api/report_sighting`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(aiPayload),
+        }
+      );
+
+      if (!aiResp.ok) {
+        const errorData = await aiResp.json().catch(() => ({}));
+        throw new Error(errorData.error || `AI 서버 오류: ${aiResp.status}`);
+      }
+
+      const aiData = await aiResp.json();
+
+      // ◀◀ [수정됨] AI 분석 성공 시, 'alert' 없이 바로 결과 페이지로 이동
+      // alert("[2/2] 제보 등록 및 AI 분석 성공! 결과 페이지로 이동합니다.");
+      navigate("/search-results", {
+        state: {
+          results: aiData.results,
+          returnTo: "/report",
+        },
+      });
+    } catch (err) {
+      // ◀◀ [수정됨] AI 서버가 실패했을 때의 오류 (알림창 문구 정리)
+      console.error("AI 분석 실패:", err);
+      alert(`AI 분석 중 심각한 오류가 발생했습니다: ${err.message}`);
+
+      if (teamReportSuccess) {
+        navigate("/");
+      }
+    } finally {
+      setIsLoading(false);
     }
   };
 
   // 렌더
   return (
     <main className="pt-28 pb-16 bg-slate-50 text-slate-800">
+      {/* ◀◀ [4. 신규 추가] 로딩 오버레이 */}
+      {isLoading && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="text-white text-xl font-bold p-8 bg-sky-500 rounded-lg shadow-xl">
+            {/* (간단한 스피너 애니메이션) */}
+            <svg
+              className="animate-spin h-8 w-8 text-white mx-auto mb-4"
+              xmlns="http://www.w3.org/2000/svg"
+              fill="none"
+              viewBox="0 0 24 24"
+            >
+              <circle
+                className="opacity-25"
+                cx="12"
+                cy="12"
+                r="10"
+                stroke="currentColor"
+                strokeWidth="4"
+              ></circle>
+              <path
+                className="opacity-75"
+                fill="currentColor"
+                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
+              ></path>
+            </svg>
+            제보 등록 및 AI 분석 중...
+          </div>
+        </div>
+      )}
       <section className="container mx-auto px-4 sm:px-6 lg:px-8">
         <div className="max-w-4xl mx-auto bg-white p-8 rounded-2xl shadow-lg border border-slate-200">
           <h1 className="text-3xl font-extrabold text-sky-500 mb-2">
             우리 동네 동물 제보
           </h1>
           <p className="text-slate-600 mb-8">
-            목격하신 동물 정보를 정확히 작성해 주세요. 빠른 연결에 큰 도움이
-            됩니다.
+            목격하신 동물 정보를 정확히 작성해 주세요. (사진 또는 설명 필수)
           </p>
 
           <form className="space-y-6" onSubmit={onSubmit}>
@@ -254,14 +372,14 @@ export default function ReportPage() {
             {/* 설명 */}
             <div>
               <label className="block text-lg font-bold text-slate-800 mb-2">
-                설명
+                설명 (사진이 없을시 필수)
               </label>
               <textarea
                 rows={4}
                 value={desc}
                 onChange={(e) => setDesc(e.target.value)}
                 className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2"
-                placeholder="크기, 색상, 특징, 행동 등을 자세히 적어주세요."
+                placeholder="크기, 색상, 특징, 행동 등을 자세히 적어주세요. (AI 분석에 사용됩니다)"
               />
             </div>
 
@@ -318,15 +436,17 @@ export default function ReportPage() {
               <button
                 type="button"
                 onClick={() => navigate("/")}
+                disabled={isLoading}
                 className="px-8 py-3 text-lg font-bold text-slate-700 bg-slate-200 rounded-lg hover:bg-slate-300"
               >
                 취소
               </button>
               <button
                 type="submit"
+                disabled={isLoading}
                 className="px-8 py-3 text-lg font-bold text-white bg-sky-400 rounded-lg hover:bg-sky-500"
               >
-                제보 등록
+                {isLoading ? "처리 중..." : "제보 등록"}
               </button>
             </div>
           </form>

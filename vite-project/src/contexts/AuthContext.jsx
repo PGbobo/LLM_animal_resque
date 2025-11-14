@@ -10,8 +10,15 @@ import {
 
 export function AuthProvider({ children }) {
   const [token, setToken] = useState(sessionStorage.getItem("authToken"));
-  const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [user, setUser] = useState(() => {
+    try {
+      // user 정보는 JSON 문자열이므로 파싱(parsing)
+      return JSON.parse(sessionStorage.getItem("authUser"));
+    } catch (e) {
+      return null; // 파싱 실패 시 null
+    }
+  });
+  const [loading, setLoading] = useState(false);
 
   // 일반 로그인
   const login = async (id, password) => {
@@ -22,6 +29,7 @@ export function AuthProvider({ children }) {
       setToken(receivedToken);
       setUser(receivedUser);
       sessionStorage.setItem("authToken", receivedToken);
+      sessionStorage.setItem("authUser", JSON.stringify(receivedUser));
 
       return true;
     } catch (error) {
@@ -42,6 +50,7 @@ export function AuthProvider({ children }) {
       setToken(receivedToken);
       setUser(receivedUser);
       sessionStorage.setItem("authToken", receivedToken);
+      sessionStorage.setItem("authUser", JSON.stringify(receivedUser));
 
       return true;
     } catch (error) {
@@ -58,20 +67,16 @@ export function AuthProvider({ children }) {
     apiLogout();
     setUser(null);
     setToken(null);
+    sessionStorage.removeItem("authToken");
+    sessionStorage.removeItem("authUser");
     alert("로그아웃 되었습니다.");
   };
-
-  useEffect(() => {
-    if (token) {
-      console.log("기존 토큰이 있어 로그인 상태로 시작합니다.");
-    }
-    setLoading(false);
-  }, [token]);
 
   const value = {
     isLoggedIn: !!token,
     user,
     token,
+    loading,
     login,
     loginWithGoogle, // ⭐️ 구글 로그인 함수 추가
     logout,

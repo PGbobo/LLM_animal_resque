@@ -19,6 +19,7 @@ export default function SearchResultPage() {
 
   // 1. ReportPage에서 navigate로 보낸 'state'에서 "원본" 결과 추출
   const originalResults = location.state?.results;
+  const returnTo = location.state?.returnTo || "/"; // ◀ 기본값은 홈
 
   // 2. ◀◀ [신규] 최소 점수 기준으로 결과 "필터링"
   const filteredResults = React.useMemo(() => {
@@ -40,17 +41,16 @@ export default function SearchResultPage() {
               검색 결과 없음
             </h1>
             <p className="text-slate-600 mb-6">
-              {/* (수정) ◀◀ 필터링을 고려한 안내 메시지 */}
               유사도 분석 결과가 없거나, 설정된 최소 유사도(
               {(MINIMUM_SIMILARITY_THRESHOLD * 100).toFixed(0)}
               %) 기준을 만족하는 항목이 없습니다.
             </p>
             <button
               type="button"
-              onClick={() => navigate("/report")} // '제보(검색)' 페이지로 돌아가기
+              onClick={() => navigate(returnTo)} // ◀ (수정) '/report' 대신 'returnTo' 사용
               className="px-8 py-3 text-lg font-bold text-white bg-sky-400 rounded-lg hover:bg-sky-500"
             >
-              다시 검색하기
+              이전 페이지로
             </button>
           </div>
         </section>
@@ -115,7 +115,7 @@ export default function SearchResultPage() {
 
           <button
             type="button"
-            onClick={() => navigate("/report")} // '제보(검색)' 페이지로 돌아가기
+            onClick={() => navigate(returnTo)} // '제보(검색)' 페이지로 돌아가기
             className="mt-8 px-8 py-3 text-lg font-bold text-white bg-sky-400 rounded-lg hover:bg-sky-500"
           >
             다른 사진으로 검색
