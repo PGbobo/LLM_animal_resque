@@ -189,11 +189,23 @@ export default function MyPetsPage() {
                         onChange={() => toggleLostActive(p.id)}
                       />
                       {/* 간단 토글 UI */}
-                      <span className="w-10 h-6 rounded-full bg-slate-300 peer-checked:bg-pink-500 relative transition-colors">
-                        <span className="absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full transition-transform peer-checked:translate-x-4" />
+                      {/* ⭐️ 토글 배경: bg-pink-500 (켜짐) / bg-slate-300 (꺼짐) */}
+                                           {" "}
+                      <span
+                        className={`w-10 h-6 rounded-full relative transition-colors duration-300 ${
+                          p.isLostActive ? "bg-pink-500" : "bg-slate-300"
+                        }`}
+                      >
+                        <span
+                          className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full transition-transform duration-300 ${
+                            p.isLostActive ? "translate-x-4" : ""
+                          }`}
+                        />
                       </span>
+                                           {" "}
                       <span className="text-sm text-slate-700">
-                        실종 상태 유지
+                                                실종 상태 유지                  
+                           {" "}
                       </span>
                     </label>
 
