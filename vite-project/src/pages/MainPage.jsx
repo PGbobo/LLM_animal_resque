@@ -271,7 +271,7 @@ const IntroPage = () => {
                   실종 등록 페이지로
                 </button>
                 <button
-                  onClick={navigate("/reported-pets")}
+                  onClick={navigate("/missing-pets")}
                   className="px-6 py-3 rounded-xl bg-white text-slate-700 font-semibold border border-slate-300 hover:bg-slate-100 transition"
                 >
                   실종 조회 페이지로
@@ -327,7 +327,7 @@ const IntroPage = () => {
                   실종 제보 페이지로
                 </button>
                 <button
-                  onClick={navigate("/reported-pets")}
+                  onClick={navigate("/witness-pets")}
                   className="px-6 py-3 rounded-xl bg-white text-slate-700 font-semibold border border-slate-300 hover:bg-slate-100 transition"
                 >
                   제보 조회 페이지로

@@ -75,7 +75,7 @@ const Header = () => {
                     실종 동물 등록
                   </Link>
                   <Link
-                    to="/reported-pets"
+                    to="/missing-pets"
                     className="block px-5 py-3 text-base text-gray-700 hover:bg-gray-100"
                   >
                     실종 동물 조회
@@ -109,7 +109,7 @@ const Header = () => {
                     실종 동물 제보
                   </Link>
                   <Link
-                    to="/reported-pets"
+                    to="/witness-pets"
                     className="block px-5 py-3 text-base text-gray-700 hover:bg-gray-100"
                   >
                     제보 동물 조회
