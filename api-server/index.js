@@ -421,6 +421,91 @@ app.get("/live-posts", async (req, res) => {
   }
 });
 
+// =======================
+// 실종 동물 목록 (MISSING)
+// =======================
+app.get("/missing-posts", async (req, res) => {
+  console.log("[GET /missing-posts] 실종 동물 목록 요청");
+  let conn;
+  try {
+    conn = await mysql.createConnection(dbConfig);
+
+    const sql = `
+      SELECT
+        MISSING_NUM      AS id,          -- 게시글 번호(프론트에서 id로 사용)
+        USER_NUM         AS userNum,
+        PET_NAME         AS petName,     -- 반려동물 이름
+        SPECIES          AS species,     -- 종
+        PET_GENDER       AS petGender,   -- 성별
+        PET_AGE          AS age,         -- 나이
+        LOST_DATE        AS date,        -- 실종 날짜/시간
+        LOST_LOCATION    AS location,    -- 실종 장소
+        CONTACT_NUMBER   AS contactNumber,-- 연락처 번호
+        DESCRIPTION      AS content,     -- 내용
+        PET_IMAGE_URL    AS img,         -- 사진 경로/URL
+        LAT              AS lat,         -- 위도
+        LON              AS lon,         -- 경도
+        STATUS           AS status,       -- 상태
+        CREATED_AT       AS createdAt,
+        'missing'        AS type         -- 프론트에서 구분용
+      FROM MISSING
+      ORDER BY LOST_DATE DESC, MISSING_NUM DESC
+    `;
+
+    const [rows] = await conn.execute(sql);
+    await conn.end();
+
+    return res.status(200).json({ success: true, data: rows });
+  } catch (error) {
+    console.error("/missing-posts 에러:", error);
+    if (conn) await conn.end();
+    return res
+      .status(500)
+      .json({ success: false, message: `서버 내부 오류: ${error.message}` });
+  }
+});
+
+// =======================
+// 목격 제보 목록 (REPORTS)
+// =======================
+app.get("/witness-posts", async (req, res) => {
+  console.log("[GET /witness-posts] 목격 제보 목록 요청");
+  let conn;
+  try {
+    conn = await mysql.createConnection(dbConfig);
+
+    const sql = `
+      SELECT
+        REPORT_NUM       AS id,          -- 게시글 번호
+        USER_NUM         AS userNum,
+        TITLE            AS title,       -- 제목
+        DOG_CAT          AS dogCat,      -- 견/묘 구분
+        REPORT_DATE      AS date,        -- 목격 날짜/시간
+        REPORT_LOCATION  AS location,    -- 목격 장소
+        CONTENT          AS content,     -- 내용
+        PHONE            AS phone,
+        PHOTO            AS img,         -- 사진 경로/URL
+        LAT              AS lat,         -- 위도
+        LON              AS lon,         -- 경도
+        CREATED_AT       AS createdAt,
+        'witness'        AS type         -- 프론트에서 구분용
+      FROM REPORTS
+      ORDER BY REPORT_DATE DESC, REPORT_NUM DESC
+    `;
+
+    const [rows] = await conn.execute(sql);
+    await conn.end();
+
+    return res.status(200).json({ success: true, data: rows });
+  } catch (error) {
+    console.error("/witness-posts 에러:", error);
+    if (conn) await conn.end();
+    return res
+      .status(500)
+      .json({ success: false, message: `서버 내부 오류: ${error.message}` });
+  }
+});
+
 // -------------------------------
 // 서버 기동
 // -------------------------------
