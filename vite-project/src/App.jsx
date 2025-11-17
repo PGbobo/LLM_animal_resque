@@ -15,6 +15,8 @@ import RegisterPetPage from "./pages/RegisterPetPage.jsx";
 import ReportPage from "./pages/ReportPage.jsx";
 import StrayDogPage from "./pages/StrayDogPage.jsx";
 import LiveCheckPage from "./pages/LiveCheckPage.jsx";
+import MissingCheckPage from "./pages/MissingCheckPage.jsx";
+import WitnessCheckPage from "./pages/WitnessCheckPage.jsx";
 import ShelterPage from "./pages/ShelterPage.jsx";
 import HospitalPage from "./pages/HospitalPage.jsx";
 import CommunityListPage from "./pages/community/CommunityListPage.jsx";
@@ -87,6 +89,8 @@ function App() {
 
             {/* 로그인 없이 접근 가능 */}
             <Route path="reported-pets" element={<LiveCheckPage />} />
+            <Route path="missing-pets" element={<MissingCheckPage />} />
+            <Route path="witness-pets" element={<WitnessCheckPage />} />
             <Route path="abandoned-pets" element={<StrayDogPage />} />
 
             {/* 보호소 / 병원 페이지 */}
