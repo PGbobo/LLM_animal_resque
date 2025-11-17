@@ -1,10 +1,12 @@
+// index.js (전체 코드)
+
 // [추가] Express 및 미들웨어 설정
 const express = require("express");
 const mysql = require("mysql2/promise");
 const cors = require("cors");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
-const { OAuth2Client } = require("google-auth-library"); // ⭐️ 구글 인증 라이브러리
+const { OAuth2Client } = require("google-auth-library");
 
 const app = express();
 const PORT = 4000;
@@ -28,16 +30,86 @@ const dbConfig = {
 
 const JWT_SECRET_KEY = "my-project-secret-key";
 
-// ⭐️ 구글 OAuth 클라이언트 설정
+// 구글 OAuth 클라이언트 설정
 const GOOGLE_CLIENT_ID =
-  "803832164097-u1ih0regpfsemh8truu5pn9kgb65qg1t.apps.googleusercontent.com"; // 🔥 Google Cloud Console에서 받은 클라이언트 ID
+  "803832164097-u1ih0regpfsemh8truu5pn9kgb65qg1t.apps.googleusercontent.com";
 const googleClient = new OAuth2Client(GOOGLE_CLIENT_ID);
+
+// ----------------------------------------------------
+// ⭐️ [추가] 인증 미들웨어 및 토큰 검증 API
+// ----------------------------------------------------
+
+// ⭐️ 토큰을 검증하고 사용자 ID를 req.userId에 할당하는 미들웨어
+const authenticateToken = (req, res, next) => {
+  const authHeader = req.headers["authorization"];
+  // 헤더가 없거나 'Bearer '로 시작하지 않으면 미인증 처리
+  const token = authHeader && authHeader.split(" ")[1];
+
+  if (token == null) {
+    console.log("인증 실패: 토큰 없음");
+    return res
+      .status(401)
+      .json({ success: false, message: "접근 권한이 없습니다." });
+  }
+
+  jwt.verify(token, JWT_SECRET_KEY, (err, user) => {
+    if (err) {
+      console.log("인증 실패: 토큰 만료 또는 유효하지 않음", err.message);
+      return res
+        .status(403)
+        .json({ success: false, message: "토큰이 유효하지 않습니다." });
+    }
+    // 토큰이 유효하면 사용자 ID 저장
+    req.userId = user.userId;
+    next();
+  });
+};
+
+// ⭐️ 토큰을 통해 사용자 정보만 반환하는 API (프론트엔드에서 loading 해제 시 사용)
+app.get("/api/users/me", authenticateToken, async (req, res) => {
+  let conn;
+  try {
+    conn = await mysql.createConnection(dbConfig);
+    const sql =
+      "SELECT ID, NICKNAME, NAME, EMAIL, PHONE, ADDRESS, SOCIAL_LOGIN_TYPE FROM USERS WHERE ID = ?";
+    const [rows] = await conn.execute(sql, [req.userId]);
+    await conn.end();
+
+    if (rows.length === 0) {
+      return res
+        .status(404)
+        .json({ success: false, message: "사용자를 찾을 수 없습니다." });
+    }
+
+    const user = rows[0];
+
+    return res.status(200).json({
+      success: true,
+      user: {
+        id: user.ID,
+        displayName: user.NICKNAME || user.NAME,
+        name: user.NAME,
+        nickname: user.NICKNAME,
+        email: user.EMAIL,
+        phone: user.PHONE,
+        address: user.ADDRESS,
+      },
+    });
+  } catch (error) {
+    console.error("/api/users/me 에러:", error);
+    if (conn) await conn.end();
+    return res
+      .status(500)
+      .json({ success: false, message: `서버 내부 오류: ${error.message}` });
+  }
+});
 
 // ----------------------------------------------------
 // 5) 회원가입 / 로그인
 // ----------------------------------------------------
 
 app.post("/register", async (req, res) => {
+  // ... (기존 register 로직 유지)
   console.log("회원가입 요청:", req.body);
 
   const { id, password, nickname, name, phone } = req.body;
@@ -66,6 +138,7 @@ app.post("/register", async (req, res) => {
 
 // 일반 로그인
 app.post("/login", async (req, res) => {
+  // ... (기존 login 로직 유지)
   console.log("로그인 요청:", req.body);
   const { id, password } = req.body;
   let conn;
@@ -137,11 +210,11 @@ app.post("/login", async (req, res) => {
   }
 });
 
-// ⭐️ 구글 소셜 로그인
-
+// 구글 소셜 로그인
 app.post("/auth/google", async (req, res) => {
+  // ... (기존 auth/google 로직 유지)
   console.log("구글 로그인 요청:", req.body);
-  const { credential } = req.body; // 구글에서 받은 JWT 토큰
+  const { credential } = req.body;
 
   let conn;
 
@@ -153,17 +226,17 @@ app.post("/auth/google", async (req, res) => {
     });
 
     const payload = ticket.getPayload();
-    const googleId = payload.sub; // 구글 고유 ID
+    const googleId = payload.sub;
     const email = payload.email;
     const name = payload.name;
-    const picture = payload.picture; // 프로필 이미지 URL
+    const picture = payload.picture;
 
     console.log("구글 사용자 정보:", { googleId, email, name });
 
     conn = await mysql.createConnection(dbConfig);
 
     // 2. 기존 사용자 확인 (이메일을 ID로 사용)
-    const userId = email; // 🔥 이메일을 ID로 사용
+    const userId = email;
     let sql = "SELECT * FROM USERS WHERE ID = ?";
     let [rows] = await conn.execute(sql, [userId]);
 
@@ -173,7 +246,7 @@ app.post("/auth/google", async (req, res) => {
       // 3. 신규 사용자 -> 자동 회원가입
       console.log("신규 구글 사용자 -> 자동 회원가입");
 
-      const nickname = name; // 닉네임은 구글 이름 사용
+      const nickname = name;
 
       sql = `
         INSERT INTO USERS
@@ -212,7 +285,7 @@ app.post("/auth/google", async (req, res) => {
         displayName: user.NICKNAME || user.NAME,
         name: user.NAME,
         nickname: user.NICKNAME,
-        email: email, // 구글에서 받은 이메일 사용 (DB에 저장 안 함)
+        email: email,
         phone: user.PHONE || null,
         address: user.ADDRESS || null,
       },
@@ -232,6 +305,7 @@ app.post("/auth/google", async (req, res) => {
 // ----------------------------------------------------
 const MISSING_TABLE = "MISSING";
 app.post("/lost-pets", async (req, res) => {
+  // ... (기존 /lost-pets 로직 유지)
   console.log("실종동물 등록 요청:", req.body);
   return res
     .status(501)
@@ -243,6 +317,7 @@ app.post("/lost-pets", async (req, res) => {
 // ----------------------------------------------------
 const REPORTS_TABLE = "REPORTS";
 app.post("/reports", async (req, res) => {
+  // ... (기존 /reports 로직 유지)
   console.log("동물 제보 등록 요청:", req.body);
   return res
     .status(501)
@@ -253,6 +328,7 @@ app.post("/reports", async (req, res) => {
 // 8) 유기견 목록 조회
 // ----------------------------------------------------
 app.get("/stray-dogs", async (req, res) => {
+  // ... (기존 /stray-dogs 로직 유지)
   console.log("[GET /stray-dogs] 유기견 목록 API 요청 받음");
   let conn;
   try {
