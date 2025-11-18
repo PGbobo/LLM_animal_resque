@@ -139,6 +139,7 @@ const MissingCheckPage = () => {
                 pets={missingPosts}
                 selectedPet={selectedPet}
                 onMarkerSelect={handleMarkerSelect}
+                markerVariant="red" // 🔴 실종 페이지는 빨간 마커
               />
             </div>
             <div className="flex items-center justify-center space-x-6 mt-4 text-sm font-medium">

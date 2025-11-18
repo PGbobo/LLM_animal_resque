@@ -120,6 +120,7 @@ const WitnessCheckPage = () => {
                 pets={witnessPosts}
                 selectedPet={selectedPet}
                 onMarkerSelect={handleMarkerSelect}
+                markerVariant="blue" // 🔵 목격 페이지는 기존 파란 마커
               />
             </div>
 
