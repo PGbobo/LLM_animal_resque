@@ -10,7 +10,7 @@ const { OAuth2Client } = require("google-auth-library"); // ⭐️ 구글 인증
 const {
   S3Client,
   PutObjectCommand,
-  DeleteObjectCommand, // ◀◀ [신규] S3 파일 삭제를 위해 추가
+  DeleteObjectCommand, // ◀◀ S3 파일 삭제를 위해 추가
 } = require("@aws-sdk/client-s3");
 
 const app = express();
@@ -201,7 +201,6 @@ app.get("/api/users/me", verifyToken, async (req, res) => {
 });
 
 // ⭐️ 구글 소셜 로그인
-
 app.post("/auth/google", async (req, res) => {
   console.log("구글 로그인 요청:", req.body);
   const { credential } = req.body; // 구글에서 받은 JWT 토큰
@@ -256,7 +255,12 @@ app.post("/auth/google", async (req, res) => {
 
     // 5. JWT 토큰 생성
     const token = jwt.sign(
-      { userId: user.ID, nickname: user.NICKNAME, userNum: user.USER_NUM }, // userNum 추가
+      {
+        userId: user.ID,
+        nickname: user.NICKNAME,
+        userNum: user.USER_NUM,
+        role: user.ROLE,
+      }, // userNum, role 추가
       JWT_SECRET_KEY,
       { expiresIn: "1h" }
     );
@@ -278,6 +282,7 @@ app.post("/auth/google", async (req, res) => {
         email: email, // 구글에서 받은 이메일 사용 (DB에 저장 안 함)
         phone: user.PHONE || null,
         address: user.ADDRESS || null,
+        role: user.ROLE,
       },
     });
   } catch (error) {
@@ -462,6 +467,148 @@ app.post("/reports", verifyToken, upload.single("photo"), async (req, res) => {
     return res
       .status(500)
       .json({ success: false, message: `DB 저장 오류: ${error.message}` });
+  }
+});
+
+// ----------------------------------------------------
+// ⭐️ 내 실종 동물 목록 조회 (MypetsPage.jsx 용)
+// ----------------------------------------------------
+app.get("/mypets", verifyToken, async (req, res) => {
+  console.log("[GET /mypets] 내 실종 동물 목록 요청");
+  const userNum = req.user.userNum;
+  let conn;
+
+  try {
+    if (!userNum) {
+      return res
+        .status(401)
+        .json({ success: false, message: "사용자 정보가 유효하지 않습니다." });
+    }
+
+    conn = await mysql.createConnection(dbConfig);
+
+    const sql = `
+      SELECT
+        MISSING_NUM      AS id,          -- 게시글 번호
+        PET_NAME         AS petName,     -- 실종견 이름
+        PET_AGE          AS petAge,      -- 실종견 나이
+        SPECIES          AS species,     -- 품종
+        LOST_DATE        AS lostDate,    -- 잃어버린 날짜
+        LOST_LOCATION    AS lostLocation,-- 실종 장소
+        PET_IMAGE_URL    AS petImageUrl, -- 이미지 URL
+        STATUS           AS status,      -- 실종 상태 ('0': 진행중, '1': 종료)
+        CONTACT_NUMBER   AS contactNumber,
+        PET_GENDER       AS petGender,
+        LAT              AS lat,
+        LON              AS lon,
+        USER_NUM         AS userNum      -- 소유자 확인용
+      FROM ${MISSING_TABLE}
+      WHERE USER_NUM = ?
+      ORDER BY LOST_DATE DESC, MISSING_NUM DESC
+    `;
+
+    const [rows] = await conn.execute(sql, [userNum]);
+    await conn.end();
+
+    return res.status(200).json({ success: true, data: rows });
+  } catch (error) {
+    console.error("/mypets 에러:", error);
+    if (conn) await conn.end();
+    return res
+      .status(500)
+      .json({ success: false, message: `서버 내부 오류: ${error.message}` });
+  }
+});
+
+// ----------------------------------------------------------------------------------------------------------------------
+// ⭐️ [재수정] 내 실종 동물 삭제 API (NCP S3 파일 삭제 로직 보강)
+// ----------------------------------------------------------------------------------------------------------------------
+app.delete("/mypets/:id", verifyToken, async (req, res) => {
+  const { id } = req.params;
+  const userNum = req.user.userNum;
+
+  console.log(`[DELETE] 내 실종 동물 #${id} 삭제 요청 (요청자: ${userNum})`);
+
+  let conn;
+  try {
+    conn = await mysql.createConnection(dbConfig);
+
+    // 1. 요청자가 해당 게시물의 소유자인지 확인하고, 이미지 URL을 가져옴
+    const selectSql = `
+      SELECT PET_IMAGE_URL, USER_NUM
+      FROM ${MISSING_TABLE}
+      WHERE MISSING_NUM = ?
+    `;
+    const [rows] = await conn.execute(selectSql, [id]);
+
+    if (rows.length === 0) {
+      await conn.end();
+      return res
+        .status(404)
+        .json({
+          success: false,
+          message: "삭제할 실종 등록을 찾을 수 없습니다.",
+        });
+    }
+
+    const petData = rows[0];
+
+    // ⭐️ [중요] 소유자 권한 확인
+    if (petData.USER_NUM !== userNum) {
+      await conn.end();
+      return res
+        .status(403)
+        .json({
+          success: false,
+          message: "삭제 권한이 없습니다. (본인의 게시물만 삭제 가능)",
+        });
+    }
+
+    const s3FullUrl = petData.PET_IMAGE_URL;
+
+    // 2. S3 스토리지에서 이미지 삭제
+    if (s3FullUrl) {
+      try {
+        // Full URL (https://.../bucket-name/key)에서 Key (abandon/missing/...) 부분만 추출
+        const s3Key = s3FullUrl.split(BUCKET_NAME + "/")[1];
+
+        if (s3Key) {
+          console.log(`  [S3] 삭제 시도: ${s3Key}`);
+          await s3Client.send(
+            new DeleteObjectCommand({
+              Bucket: BUCKET_NAME,
+              Key: s3Key,
+            })
+          );
+          console.log(`  [S3] 삭제 성공.`);
+        }
+      } catch (s3Error) {
+        // (중요) S3 삭제에 실패해도 (파일이 이미 없거나 권한 문제)
+        // DB 삭제는 계속 진행해야 데이터 불일치 문제가 해결됩니다.
+        console.error(
+          `  [S3] 삭제 실패 (DB 삭제는 계속 진행): ${s3Error.message}`
+        );
+      }
+    } else {
+      console.log("  [S3] DB에 이미지 URL이 없어 S3 삭제를 건너뜁니다.");
+    }
+
+    // 3. DB에서 데이터 삭제
+    const deleteSql = `DELETE FROM ${MISSING_TABLE} WHERE MISSING_NUM = ?`;
+    await conn.execute(deleteSql, [id]);
+    console.log(`  [DB] ${MISSING_TABLE} 테이블에서 #${id} 삭제 성공.`);
+
+    await conn.end();
+    return res.status(200).json({
+      success: true,
+      message: "실종 등록이 성공적으로 삭제되었습니다.",
+    });
+  } catch (error) {
+    console.error(`[DELETE /mypets/:id] API 에러: ${error.message}`);
+    if (conn) await conn.end();
+    return res
+      .status(500)
+      .json({ success: false, message: `서버 내부 오류: ${error.message}` });
   }
 });
 

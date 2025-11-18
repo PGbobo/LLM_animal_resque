@@ -60,4 +60,16 @@ export const getStrayDogs = async () => {
   return await api.get("/stray-dogs");
 };
 
+// ⭐️ [신규] 내 실종 동물 목록 조회 (USER_NUM 기준)
+export const getMyLostPets = async () => {
+  // 토큰은 인터셉터에서 자동으로 추가됩니다.
+  return await api.get("/mypets");
+};
+
+// ⭐️ [신규] 내 실종 동물 삭제
+export const deleteMyLostPet = async (petId) => {
+  // petId를 경로에 포함하여 삭제 요청 (인증은 인터셉터에서 처리)
+  return await api.delete(`/mypets/${petId}`);
+};
+
 export default api;
