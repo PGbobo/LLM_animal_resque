@@ -201,6 +201,15 @@ export default function Header() {
                       <span className="text-sky-400">{user.nickname}</span>님
                     </span>
                   )}
+                  {/* ◀◀ [신규 추가] 관리자일 때만 이 버튼이 보입니다. */}
+                  {isLoggedIn && user?.role === "ADMIN" && (
+                    <Link
+                      to="/admin"
+                      className="px-6 py-3 text-base font-bold text-white bg-red-500 rounded-lg shadow-sm hover:bg-red-600 whitespace-nowrap"
+                    >
+                      관리자 페이지
+                    </Link>
+                  )}
                   {/* 마이페이지 드롭다운 */}
                   <div className="relative group h-20 flex items-center">
                     <button className="px-6 py-3 text-base font-bold text-gray-700 bg-white border-2 border-sky-200 rounded-lg shadow-sm hover:bg-gray-100 flex items-center whitespace-nowrap">
@@ -338,6 +347,17 @@ export default function Header() {
                 </span>
                 님 환영합니다
               </div>
+
+              {/* ◀◀ [신규 추가] 관리자일 때만 이 링크가 보입니다. */}
+              {user && user?.role === "ADMIN" && (
+                <Link
+                  to="/admin"
+                  onClick={closeAndGo}
+                  className="block w-full px-4 py-3 mb-3 rounded-lg border border-red-300 bg-red-50 text-red-600 font-semibold text-center hover:bg-red-100"
+                >
+                  관리자 페이지 (Admin)
+                </Link>
+              )}
               <button
                 className="w-full flex items-center justify-between px-4 py-3 rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-50"
                 onClick={() => setOpenMy((v) => !v)}

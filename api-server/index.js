@@ -6,7 +6,11 @@ const cors = require("cors");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const multer = require("multer");
-const { S3Client, PutObjectCommand } = require("@aws-sdk/client-s3");
+const {
+  S3Client,
+  PutObjectCommand,
+  DeleteObjectCommand, // ◀◀ [신규] S3 파일 삭제를 위해 추가
+} = require("@aws-sdk/client-s3");
 
 const app = express();
 const PORT = 4000;
@@ -73,6 +77,23 @@ const verifyToken = (req, res, next) => {
   }
 };
 
+const verifyAdmin = (req, res, next) => {
+  // 1. 먼저, 유효한 토큰인지 검사 (기존 미들웨어 재사용)
+  verifyToken(req, res, () => {
+    // 2. 토큰이 유효하면, ROLE을 검사
+    if (req.user.role === "ADMIN") {
+      // 3. (성공) 관리자이면 다음 단계로 진행
+      next();
+    } else {
+      // 4. (실패) 관리자가 아니면 403 Forbidden (접근 거부)
+      return res.status(403).json({
+        success: false,
+        message: "접근 권한이 없습니다. (관리자 전용)",
+      });
+    }
+  });
+};
+
 // -------------------------------
 // 회원가입 / 로그인
 // -------------------------------
@@ -132,6 +153,7 @@ app.post("/login", async (req, res) => {
       userId: user.ID,
       userNum: user.USER_NUM,
       nickname: user.NICKNAME,
+      role: user.ROLE,
     };
     const token = jwt.sign(payload, JWT_SECRET_KEY, { expiresIn: "1h" });
     await conn.end();
@@ -148,6 +170,7 @@ app.post("/login", async (req, res) => {
         email: user.EMAIL,
         phone: user.PHONE,
         address: user.ADDRESS,
+        role: user.ROLE,
       },
     });
   } catch (error) {
@@ -166,6 +189,7 @@ app.get("/api/users/me", verifyToken, async (req, res) => {
       id: req.user.userId,
       userNum: req.user.userNum,
       nickname: req.user.nickname,
+      role: req.user.role,
     },
   });
 });
@@ -505,6 +529,100 @@ app.get("/witness-posts", async (req, res) => {
       .json({ success: false, message: `서버 내부 오류: ${error.message}` });
   }
 });
+
+// ===================================
+// (신규) 관리자 페이지용 통합 삭제 API
+// ===================================
+app.delete(
+  "/api/admin/delete/:type/:id", // (예: /api/admin/delete/missing/5)
+  verifyAdmin, // ◀ 관리자(로그인) 인증
+  async (req, res) => {
+    const { type, id } = req.params;
+    const userNum = req.user.userNum; // ◀ (보안) 삭제를 요청한 사용자
+
+    console.log(`[DELETE] ${type} #${id} (요청자: ${userNum})`);
+
+    let tableName, idColumn, s3KeyColumn;
+
+    // 1. 타입에 따라 테이블/컬럼 이름 설정
+    if (type === "missing") {
+      tableName = MISSING_TABLE;
+      idColumn = "MISSING_NUM";
+      s3KeyColumn = "PET_IMAGE_URL";
+    } else if (type === "reports") {
+      tableName = REPORTS_TABLE;
+      idColumn = "REPORT_NUM";
+      s3KeyColumn = "PHOTO";
+    } else {
+      return res
+        .status(400)
+        .json({ success: false, message: "잘못된 삭제 타입입니다." });
+    }
+
+    let conn;
+    try {
+      conn = await mysql.createConnection(dbConfig);
+
+      // 2. (먼저) DB에서 S3 이미지 URL(Key) 확보
+      const selectSql = `SELECT ${s3KeyColumn} FROM ${tableName} WHERE ${idColumn} = ?`;
+      const [rows] = await conn.execute(selectSql, [id]);
+
+      if (rows.length === 0) {
+        return res.status(404).json({
+          success: false,
+          message: "삭제할 데이터를 찾을 수 없습니다.",
+        });
+      }
+
+      const s3FullUrl = rows[0][s3KeyColumn];
+
+      // 3. S3 스토리지에서 이미지 삭제
+      if (s3FullUrl) {
+        try {
+          // Full URL (https://.../bucket-name/key)에서 Key (abandon/missing/...) 부분만 추출
+          const s3Key = s3FullUrl.split(BUCKET_NAME + "/")[1];
+
+          if (s3Key) {
+            console.log(`  [S3] 삭제 시도: ${s3Key}`);
+            await s3Client.send(
+              new DeleteObjectCommand({
+                // ◀ [신규] 삭제 명령
+                Bucket: BUCKET_NAME,
+                Key: s3Key,
+              })
+            );
+            console.log(`  [S3] 삭제 성공.`);
+          }
+        } catch (s3Error) {
+          // (중요) S3 삭제에 실패해도 (파일이 이미 없거나 권한 문제)
+          // DB 삭제는 계속 진행해야 데이터 불일치 문제가 해결됩니다.
+          console.error(
+            `  [S3] 삭제 실패 (DB 삭제는 계속 진행): ${s3Error.message}`
+          );
+        }
+      } else {
+        console.log("  [S3] DB에 이미지 URL이 없어 S3 삭제를 건너뜁니다.");
+      }
+
+      // 4. DB에서 데이터 삭제
+      const deleteSql = `DELETE FROM ${tableName} WHERE ${idColumn} = ?`;
+      await conn.execute(deleteSql, [id]);
+      console.log(`  [DB] ${tableName} 테이블에서 #${id} 삭제 성공.`);
+
+      await conn.end();
+      return res.status(200).json({
+        success: true,
+        message: "데이터가 성공적으로 삭제되었습니다.",
+      });
+    } catch (error) {
+      console.error(`[DELETE] API 에러: ${error.message}`);
+      if (conn) await conn.end();
+      return res
+        .status(500)
+        .json({ success: false, message: `서버 내부 오류: ${error.message}` });
+    }
+  }
+);
 
 // -------------------------------
 // 서버 기동

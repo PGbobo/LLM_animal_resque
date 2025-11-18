@@ -25,6 +25,7 @@ import SearchResultPage from "./pages/SearchResultPage.jsx";
 import AdoptionPage from "./pages/AdoptionPage.jsx";
 import EditProfilePage from "./pages/mypage/EditProfilePage.jsx";
 import MyPetsPage from "./pages/mypage/MyPetsPage.jsx";
+import AdminPage from "./pages/AdminPage.jsx";
 
 // =========================================================================
 // ⭐️ ProtectedRoute 컴포넌트 최종 수정: useRef를 사용하여 메시지 출력 횟수 제어
@@ -63,6 +64,24 @@ const ProtectedRoute = ({ element: Element, ...rest }) => {
   }, [isLoggedIn]); // isLoggedIn이 true로 바뀔 때 실행
 
   // 로그인된 경우, 요청한 컴포넌트를 렌더링합니다.
+  return <Element {...rest} />;
+};
+
+const AdminRoute = ({ element: Element, ...rest }) => {
+  const { isLoggedIn, loading, user } = useAuth(); // (user를 추가로 가져옴)
+
+  if (loading) {
+    return null; // (로딩 중엔 아무것도 안 보여줌)
+  }
+
+  // 1. 로그인을 안 했거나, 2. 관리자(ADMIN)가 아닌 경우
+  if (!isLoggedIn || user.role !== "ADMIN") {
+    // (권한이 없으므로 경고창 띄우고 홈으로 쫓아냄)
+    alert("접근 권한이 없습니다.");
+    return <Navigate to="/" replace />;
+  }
+
+  // (성공) 관리자이면, 요청한 컴포넌트(AdminPage)를 렌더링
   return <Element {...rest} />;
 };
 
@@ -125,6 +144,9 @@ function App() {
               path="adopt"
               element={<ProtectedRoute element={AdoptionPage} />}
             />
+
+            {/* 관리자 페이지 라우트 추가 */}
+            <Route path="admin" element={<AdminRoute element={AdminPage} />} />
 
             {/* 잘못된 경로 → 홈으로 리다이렉트 */}
             <Route path="*" element={<Navigate to="/" replace />} />
