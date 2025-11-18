@@ -22,6 +22,8 @@ const formatDate = (dateString) => {
   }
 };
 
+const S3_BASE_URL = "https://kr.object.ncloudstorage.com/animal-bucket";
+
 const StrayDogPage = () => {
   const [strayAnimals, setStrayAnimals] = useState([]); // DB 데이터 (전체)
   const [loading, setLoading] = useState(true); // 로딩 상태
@@ -47,17 +49,22 @@ const StrayDogPage = () => {
             if (parts.length > 1) weight = parts[1];
           }
 
+          // ◀◀ [신규 2] S3_BASE_URL과 경로(dbDog.PHOTO1)를 조합
+          const imageUrl = dbDog.PHOTO1
+            ? `${S3_BASE_URL}/${dbDog.PHOTO1}` // (예: "https://.../animal-bucket/crawled_data/...")
+            : null; // 👈 사진이 없으면 null
+
           return {
             id: dbDog.BOARD_IDX,
-            name: dbDog.NAME || "정보 없음", // 👈 카드 제목
-            image: dbDog.PHOTO1,
+            name: dbDog.NAME || "정보 없음",
+            image: imageUrl, // 👈 [수정됨] 조합된 전체 URL을 사용
             breed: dbDog.BREED,
             gender: dbDog.GENDER,
             age: dbDog.AGE,
             foundDate: formatDate(dbDog.RESCUE_DATE),
             foundLocation: dbDog.RESCUE_LOCATION,
-            featureText: features, // 👈 상세 특징 (하단용)
-            status: status, // 👈 파싱된 상태 (삭제됨)
+            featureText: features,
+            status: status,
             weight: weight,
             color: dbDog.COLOR || "정보 없음",
             shelterName: dbDog.SHELTER_NAME || "정보 없음",
