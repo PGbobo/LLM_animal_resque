@@ -6,6 +6,7 @@ const cors = require("cors");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const multer = require("multer");
+const { OAuth2Client } = require("google-auth-library"); // ⭐️ 구글 인증 라이브러리
 const {
   S3Client,
   PutObjectCommand,
@@ -34,6 +35,11 @@ const JWT_SECRET_KEY = "my-project-secret-key";
 const MISSING_TABLE = "MISSING";
 const REPORTS_TABLE = "REPORTS";
 const USERS_TABLE = "USERS";
+
+// ⭐️ 구글 OAuth 클라이언트 설정
+const GOOGLE_CLIENT_ID =
+  "803832164097-u1ih0regpfsemh8truu5pn9kgb65qg1t.apps.googleusercontent.com"; // 🔥 Google Cloud Console에서 받은 클라이언트 ID
+const googleClient = new OAuth2Client(GOOGLE_CLIENT_ID);
 
 // NCP Object Storage (S3 호환)
 const s3Client = new S3Client({
@@ -192,6 +198,96 @@ app.get("/api/users/me", verifyToken, async (req, res) => {
       role: req.user.role,
     },
   });
+});
+
+// ⭐️ 구글 소셜 로그인
+
+app.post("/auth/google", async (req, res) => {
+  console.log("구글 로그인 요청:", req.body);
+  const { credential } = req.body; // 구글에서 받은 JWT 토큰
+
+  let conn;
+
+  try {
+    // 1. 구글 토큰 검증
+    const ticket = await googleClient.verifyIdToken({
+      idToken: credential,
+      audience: GOOGLE_CLIENT_ID,
+    });
+
+    const payload = ticket.getPayload();
+    const googleId = payload.sub; // 구글 고유 ID
+    const email = payload.email;
+    const name = payload.name;
+
+    console.log("구글 사용자 정보:", { googleId, email, name });
+
+    conn = await mysql.createConnection(dbConfig);
+
+    // 2. 기존 사용자 확인 (이메일을 ID로 사용)
+    const userId = email; // 🔥 이메일을 ID로 사용
+    let sql = "SELECT * FROM USERS WHERE ID = ?";
+    let [rows] = await conn.execute(sql, [userId]);
+
+    let user;
+
+    if (rows.length === 0) {
+      // 3. 신규 사용자 -> 자동 회원가입
+      console.log("신규 구글 사용자 -> 자동 회원가입");
+
+      const nickname = name; // 닉네임은 구글 이름 사용
+
+      sql = `
+        INSERT INTO USERS
+          (ID, NICKNAME, NAME, SOCIAL_LOGIN_TYPE, CREATED_AT)
+        VALUES (?, ?, ?, 'GOOGLE', NOW())
+      `;
+
+      await conn.execute(sql, [userId, nickname, name]);
+
+      // 방금 생성한 사용자 정보 가져오기
+      [rows] = await conn.execute("SELECT * FROM USERS WHERE ID = ?", [userId]);
+      user = rows[0];
+    } else {
+      // 4. 기존 사용자 -> 로그인
+      console.log("기존 구글 사용자 -> 로그인");
+      user = rows[0];
+    }
+
+    // 5. JWT 토큰 생성
+    const token = jwt.sign(
+      { userId: user.ID, nickname: user.NICKNAME, userNum: user.USER_NUM }, // userNum 추가
+      JWT_SECRET_KEY,
+      { expiresIn: "1h" }
+    );
+
+    await conn.end();
+
+    // 6. 프론트엔드로 응답
+    console.log("구글 로그인 성공:", user.ID);
+    return res.status(200).json({
+      success: true,
+      message: "구글 로그인 성공!",
+      token: token,
+      user: {
+        id: user.ID,
+        userNum: user.USER_NUM, // userNum 추가
+        displayName: user.NICKNAME || user.NAME,
+        name: user.NAME,
+        nickname: user.NICKNAME,
+        email: email, // 구글에서 받은 이메일 사용 (DB에 저장 안 함)
+        phone: user.PHONE || null,
+        address: user.ADDRESS || null,
+      },
+    });
+  } catch (error) {
+    console.error("구글 로그인 에러:", error);
+    if (conn) await conn.end();
+    return res.status(500).json({
+      success: false,
+      message: `구글 로그인 실패: ${error.message}`,
+    });
+  }
 });
 
 // -------------------------------

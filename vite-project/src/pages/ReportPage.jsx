@@ -1,16 +1,14 @@
-// src/pages/ReportPage.jsx (목격 날짜/장소 세로 배치 수정본)
+// src/pages/ReportPage.jsx (최종 수정 - AI 분석 후 SMS 발송)
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router";
 import { useAuth } from "../hooks/useAuth";
 
-// ◀◀ [1. 신규 추가] Base64 헬퍼 함수
-// AI 서버(`/api/report_sighting`)에 Base64 문자열을 보내기 위해 필요합니다.
+// Base64 변환 함수
 const fileToBase64 = (file) =>
   new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.readAsDataURL(file);
     reader.onload = () => {
-      // "data:image/jpeg;base64," 부분을 잘라내고 순수 Base64만 반환
       const base64String = reader.result.split(",")[1];
       resolve(base64String);
     };
@@ -24,15 +22,13 @@ export default function ReportPage() {
   // 상태
   const [photoFile, setPhotoFile] = useState(null);
   const [photoPreview, setPhotoPreview] = useState("");
-  const [species, setSpecies] = useState("dog"); // UI: dog/cat/etc → 서버: DOG/CAT/OTHER
+  const [species, setSpecies] = useState("dog");
   const [title, setTitle] = useState("");
   const [desc, setDesc] = useState("");
   const [seenDate, setSeenDate] = useState("");
   const [address, setAddress] = useState("");
   const [contact, setContact] = useState("");
   const [coords, setCoords] = useState({ lat: null, lon: null });
-
-  // 로딩 상태
   const [isLoading, setIsLoading] = useState(false);
 
   // Kakao Map
@@ -42,7 +38,10 @@ export default function ReportPage() {
   const kakaoLoaded = useRef(false);
 
   const KAKAO_APP_KEY = useMemo(() => "7fc0573eaaceb31b52e3a3c9fa97c024", []);
-  const API_BASE = "http://localhost:4000";
+  const API_BASE =
+    import.meta.env?.VITE_API_BASE?.replace(/\/$/, "") ||
+    "http://localhost:4000";
+  const AI_SERVER_URL = "http://211.188.57.154:5000/api/report_sighting";
 
   // 사진 변경
   const onPhotoChange = (e) => {
@@ -115,9 +114,9 @@ export default function ReportPage() {
   const onSubmit = async (e) => {
     e.preventDefault();
 
-    // ◀ [신규] 로딩 중 중복 클릭 방지
     if (isLoading) return;
 
+    // 유효성 검사
     if (!user || !token) {
       alert("로그인이 필요합니다.");
       navigate("/login");
@@ -130,7 +129,6 @@ export default function ReportPage() {
     }
     if (!contact.trim()) return alert("연락처를 입력해 주세요.");
 
-    // ◀ [신규] AI 분석을 위한 최소 조건 검사
     const hasPhoto = !!photoFile;
     const hasText = desc && desc.trim() !== "";
     if (!hasPhoto && !hasText) {
@@ -139,13 +137,11 @@ export default function ReportPage() {
       );
     }
 
-    // ◀ [신규] 로딩 상태 '시작'
     setIsLoading(true);
 
     const dogCat =
       species === "dog" ? "DOG" : species === "cat" ? "CAT" : "OTHER";
 
-    // CONTENT에 제목/종류/연락처 포함
     const mergedContent =
       `[제목] ${title || "(무제)"}\n` +
       `[종류] ${
@@ -154,21 +150,25 @@ export default function ReportPage() {
       (contact ? `[연락처] ${contact}\n` : "") +
       `[설명]\n${desc || ""}`;
 
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    // 1단계: 팀 백엔드에 제보 등록 (이미지 포함)
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     const formData = new FormData();
     formData.append("title", title);
     formData.append("reportDate", seenDate);
     formData.append("reportLocation", address);
     formData.append("content", mergedContent);
-    formData.append("contact", contact); // PHONE
-    formData.append("species", dogCat); // DOG_CAT
+    formData.append("contact", contact);
+    formData.append("species", dogCat);
     formData.append("lat", coords.lat);
     formData.append("lon", coords.lon);
-    if (photoFile) formData.append("photo", photoFile, photoFile.name); // PHOTO
+    if (photoFile) formData.append("photo", photoFile, photoFile.name);
 
-    let teamReportSuccess = false;
+    let reportNum = null;
 
-    // --- 1. (기존) 팀 백엔드 '제보 등록' 시도 ---
     try {
+      console.log("📝 [1/3] 제보 등록 시작...");
+
       const resp = await fetch(`${API_BASE}/reports`, {
         method: "POST",
         headers: { Authorization: `Bearer ${token}` },
@@ -183,27 +183,29 @@ export default function ReportPage() {
           : await resp.text().catch(() => `HTTP ${resp.status}`);
         throw new Error(msg);
       }
+
       const data = contentType.includes("application/json")
         ? await resp.json()
         : {};
-      if (!data?.success) throw new Error(data?.message || "저장 실패");
 
-      console.log("팀 백엔드 제보 등록 성공.");
-      teamReportSuccess = true;
+      if (!data?.success) throw new Error(data?.message || "제보 등록 실패");
+
+      reportNum = data.reportNum;
+      console.log("✅ [1/3] 제보 등록 성공:", reportNum);
     } catch (err) {
-      // ◀◀ [수정됨] 'alert' 대신 'console.warn' (조용한 경고)으로 변경
-      console.warn(
-        `[1/2] 팀 서버 제보 등록 실패 (AI 분석은 계속 진행): ${err.message}`
-      );
-      // ◀ "동물 제보 API 미구현" 오류가 여기서 잡힘 (이제 alert 안 뜸)
-      // alert(
-      //   `[1/2] 팀 서버 제보 등록 실패: ${err.message}\n\n(AI 분석을 계속합니다)`
-      // );
+      console.error("❌ [1/3] 제보 등록 실패:", err);
+      alert(`제보 등록 실패: ${err.message}`);
+      setIsLoading(false);
+      return;
     }
 
-    // --- 2. (신규) 'AI 실종동물 매칭' 시도 ---
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    // 2단계: AI 서버에 분석 요청
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    let matches = [];
+
     try {
-      console.log("AI 실종동물 매칭을 시작합니다.");
+      console.log("🤖 [2/3] AI 분석 시작...");
 
       const aiPayload = {};
       if (hasPhoto) {
@@ -212,15 +214,13 @@ export default function ReportPage() {
       if (hasText) {
         aiPayload.query_text = desc;
       }
+      aiPayload.report_num = reportNum;
 
-      const aiResp = await fetch(
-        `http://211.188.57.154:5000/api/report_sighting`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(aiPayload),
-        }
-      );
+      const aiResp = await fetch(AI_SERVER_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(aiPayload),
+      });
 
       if (!aiResp.ok) {
         const errorData = await aiResp.json().catch(() => ({}));
@@ -228,36 +228,75 @@ export default function ReportPage() {
       }
 
       const aiData = await aiResp.json();
+      matches = aiData.results || aiData.matches || [];
 
-      // ◀◀ [수정됨] AI 분석 성공 시, 'alert' 없이 바로 결과 페이지로 이동
-      // alert("[2/2] 제보 등록 및 AI 분석 성공! 결과 페이지로 이동합니다.");
-      navigate("/search-results", {
-        state: {
-          results: aiData.results,
-          returnTo: "/report",
-        },
-      });
+      console.log(`✅ [2/3] AI 분석 완료. 매칭 결과: ${matches.length}개`);
     } catch (err) {
-      // ◀◀ [수정됨] AI 서버가 실패했을 때의 오류 (알림창 문구 정리)
-      console.error("AI 분석 실패:", err);
-      alert(`AI 분석 중 심각한 오류가 발생했습니다: ${err.message}`);
-
-      if (teamReportSuccess) {
-        navigate("/");
-      }
-    } finally {
+      console.error("❌ [2/3] AI 분석 실패:", err);
+      alert(
+        `AI 분석 중 오류가 발생했습니다: ${err.message}\n\n제보는 정상 등록되었습니다.`
+      );
       setIsLoading(false);
+      navigate("/");
+      return;
     }
+
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    // 3단계: ⭐ AI 분석 완료 후 SMS 발송 요청
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    if (matches.length > 0) {
+      try {
+        console.log("📲 [3/3] SMS 발송 요청 시작...");
+
+        const smsResp = await fetch(`${API_BASE}/send-match-notifications`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            matches: matches,
+            reportLocation: address,
+            reporterPhone: contact,
+          }),
+        });
+
+        if (smsResp.ok) {
+          const smsData = await smsResp.json();
+          console.log(
+            `✅ [3/3] SMS 발송 완료: 성공 ${smsData.sentCount}건, 실패 ${smsData.failedCount}건`
+          );
+        } else {
+          console.warn("⚠️ [3/3] SMS 발송 요청 실패 (계속 진행)");
+        }
+      } catch (err) {
+        // SMS 발송 실패는 치명적이지 않으므로 경고만 출력
+        console.warn("⚠️ [3/3] SMS 발송 중 오류 (계속 진행):", err);
+      }
+    } else {
+      console.log("ℹ️ [3/3] 매칭 결과 없음. SMS 발송 건너뜀");
+    }
+
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    // 4단계: 결과 페이지로 이동
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    setIsLoading(false);
+
+    navigate("/search-results", {
+      state: {
+        results: matches,
+        returnTo: "/report",
+      },
+    });
   };
 
   // 렌더
   return (
     <main className="pt-28 pb-16 bg-slate-50 text-slate-800">
-      {/* ◀◀ [4. 신규 추가] 로딩 오버레이 */}
+      {/* 로딩 오버레이 */}
       {isLoading && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="text-white text-xl font-bold p-8 bg-sky-500 rounded-lg shadow-xl">
-            {/* (간단한 스피너 애니메이션) */}
             <svg
               className="animate-spin h-8 w-8 text-white mx-auto mb-4"
               xmlns="http://www.w3.org/2000/svg"
@@ -282,6 +321,7 @@ export default function ReportPage() {
           </div>
         </div>
       )}
+
       <section className="container mx-auto px-4 sm:px-6 lg:px-8">
         <div className="max-w-4xl mx-auto bg-white p-8 rounded-2xl shadow-lg border border-slate-200">
           <h1 className="text-3xl font-extrabold text-sky-500 mb-2">
@@ -383,7 +423,7 @@ export default function ReportPage() {
               />
             </div>
 
-            {/* 날짜 (세로 1섹션) */}
+            {/* 날짜 */}
             <div>
               <label className="block text-lg font-bold text-slate-800 mb-2">
                 목격 날짜
@@ -396,7 +436,7 @@ export default function ReportPage() {
               />
             </div>
 
-            {/* 장소 (세로 1섹션) */}
+            {/* 장소 */}
             <div>
               <label className="block text-lg font-bold text-slate-800 mb-2">
                 목격 장소
@@ -437,14 +477,14 @@ export default function ReportPage() {
                 type="button"
                 onClick={() => navigate("/")}
                 disabled={isLoading}
-                className="px-8 py-3 text-lg font-bold text-slate-700 bg-slate-200 rounded-lg hover:bg-slate-300"
+                className="px-8 py-3 text-lg font-bold text-slate-700 bg-slate-200 rounded-lg hover:bg-slate-300 disabled:opacity-50"
               >
                 취소
               </button>
               <button
                 type="submit"
                 disabled={isLoading}
-                className="px-8 py-3 text-lg font-bold text-white bg-sky-400 rounded-lg hover:bg-sky-500"
+                className="px-8 py-3 text-lg font-bold text-white bg-sky-400 rounded-lg hover:bg-sky-500 disabled:opacity-50"
               >
                 {isLoading ? "처리 중..." : "제보 등록"}
               </button>
