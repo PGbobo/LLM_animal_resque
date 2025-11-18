@@ -23,44 +23,47 @@ export function AuthProvider({ children }) {
   // ⭐️ [수정된 useEffect] 초기 로딩 시에만 토큰 검증을 수행하도록 로직 개선
   useEffect(() => {
     const fetchUserOnLoad = async () => {
-      // ⚠️ loading 상태가 이미 false라면 초기화 로직을 다시 실행하지 않음
-      if (!loading && token) {
-        setLoading(true); // 다시 로딩 시작
-      }
+      // 1. 토큰이 존재하면, API를 호출하여 토큰이 유효한지 '검증'합니다.
+      // (sessionStorage의 유저 정보가 오래되었을 수 있으므로, API 호출은 필요합니다.)
+      try {
+        const response = await fetch("http://localhost:4000/api/users/me", {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const data = await response.json();
 
-      if (token) {
-        try {
-          const response = await fetch("http://localhost:4000/api/users/me", {
-            headers: { Authorization: `Bearer ${token}` },
-          });
-          const data = await response.json();
-
-          if (data.success) {
-            setUser(data.user);
-            sessionStorage.setItem("authUser", JSON.stringify(data.user));
-          } else {
-            throw new Error(data.message);
-          }
-        } catch (error) {
-          console.error("자동 로그인(토큰 검증) 실패:", error.message);
-          setToken(null);
-          setUser(null);
-          sessionStorage.removeItem("authToken");
-          sessionStorage.removeItem("authUser");
+        if (data.success) {
+          // 2. (성공) 토큰이 유효하므로, 최신 유저 정보를 저장합니다.
+          setUser(data.user);
+          sessionStorage.setItem("authUser", JSON.stringify(data.user));
+        } else {
+          // 3. (실패) 토큰이 만료되었거나 유효하지 않습니다.
+          throw new Error(data.message);
         }
+      } catch (error) {
+        // 4. (예외) API 호출에 실패하면(네트워크 오류, 만료된 토큰 등)
+        console.error("자동 로그인(토큰 검증) 실패:", error.message);
+        // 모든 인증 정보를 삭제합니다.
+        setToken(null);
+        setUser(null);
+        sessionStorage.removeItem("authToken");
+        sessionStorage.removeItem("authUser");
+      } finally {
+        // 5. ⭐️ (핵심) API가 성공하든, 실패하든, finally 블록은 '반드시' 실행됩니다.
+        // 여기서 로딩 상태를 false로 바꿔 "무한 로딩" 버그를 해결합니다.
+        setLoading(false);
       }
-      // ⭐️ 토큰 검증 완료 후 loading을 false로 설정 (가장 중요)
-      setLoading(false);
     };
 
-    // 토큰이 있지만 user 정보가 로드되지 않은 상태이거나 초기 로드일 때 실행
-    if (token && !user) {
+    // 6. ⭐️ (수정된 조건)
+    if (token) {
+      // 토큰이 있으면 '검증' 함수를 실행합니다.
       fetchUserOnLoad();
-    } else if (!token) {
-      // 토큰이 없으면 바로 로딩 해제
+    } else {
+      // 토큰이 아예 없으면, 검증할 필요도 없으므로 즉시 로딩을 해제합니다.
       setLoading(false);
     }
-    // 의존성 배열에서 user를 제거하고 token만 유지. (user는 fetchUserOnLoad 안에서 설정)
+
+    // 7. 의존성 배열은 [token]으로 유지합니다.
   }, [token]);
 
   // 일반 로그인
