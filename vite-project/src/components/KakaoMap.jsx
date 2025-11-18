@@ -1,14 +1,25 @@
 // src/components/KakaoMap.jsx
+// ------------------------------------------------------
+// 공용 KakaoMap 컴포넌트
+// - 카카오 지도 스크립트 로드
+// - 전달받은 pets 배열을 기반으로 마커(커스텀 오버레이) 생성
+// - 마커 안에 동물 사진 썸네일 출력
+// - 선택된 마커(selectedPet)는 크기/색상 변경
+// - 마커 클릭 시 onMarkerSelect 콜백으로 상위 컴포넌트에 이벤트 전달
+// - 예전에 사용하던 인포윈도우(말풍선)는 완전히 제거
+// ------------------------------------------------------
 
 import React, { useEffect, useRef, useState } from "react";
 
 const KAKAO_APP_KEY = "7fc0573eaaceb31b52e3a3c9fa97c024";
 
-// 🚩 1. 카카오맵 스크립트 로드 상태를 관리하는 커스텀 훅 (재사용성 및 안정성 증가)
+// 1. 카카오맵 스크립트 로드 상태를 관리하는 커스텀 훅
+//    - 컴포넌트가 여러 곳에서 사용돼도, window.kakao가 이미 있으면 바로 완료 처리
 const useKakaoMapScript = () => {
   const [isLoaded, setIsLoaded] = useState(false);
 
   useEffect(() => {
+    // 이미 스크립트가 로드된 경우
     if (window.kakao && window.kakao.maps) {
       setIsLoaded(true);
       return;
@@ -20,131 +31,137 @@ const useKakaoMapScript = () => {
 
     script.onload = () => {
       window.kakao.maps.load(() => {
-        // 스크립트 로드 완료 후 지도 라이브러리 로드
         setIsLoaded(true);
       });
     };
     script.onerror = () => {
       console.error("Failed to load Kakao Maps script.");
     };
+
     document.head.appendChild(script);
   }, []);
 
   return isLoaded;
 };
 
-// 🚩 KakaoMap 컴포넌트
-const KakaoMap = ({ pets, selectedPet }) => {
+// 2. KakaoMap 컴포넌트
+//    - pets: [{ id, type, latlng:[lat,lon], img, ... }]
+//    - selectedPet: 현재 선택된 동물(없으면 null)
+//    - onMarkerSelect: 마커 클릭 시 호출되는 콜백 (선택 동물 전달)
+//      ※ 다른 페이지에서 onMarkerSelect를 안 넘기면 그냥 선택 이벤트만 없는 지도처럼 동작
+const KakaoMap = ({ pets = [], selectedPet, onMarkerSelect }) => {
   const isScriptLoaded = useKakaoMapScript();
-  const mapContainerRef = useRef(null);
-  const mapRef = useRef(null);
-  const markersRef = useRef({});
-  const currentInfowindowRef = useRef(null);
+  const mapContainerRef = useRef(null); // 지도 DOM 컨테이너
+  const mapRef = useRef(null); // kakao.maps.Map 인스턴스
+  const markersRef = useRef([]); // [{ pet, overlay, el }]
 
-  // 🚩 2. 지도 인스턴스 초기화 (스크립트 로드 시 1회 실행)
+  // 3. 지도 인스턴스 초기화 (스크립트 로드 + 컨테이너 준비 후 1회 실행)
   useEffect(() => {
     if (isScriptLoaded && mapContainerRef.current && !mapRef.current) {
       const { kakao } = window;
       const mapOption = {
-        center: new kakao.maps.LatLng(35.1601, 126.8517), // 광주광역시
+        center: new kakao.maps.LatLng(35.1601, 126.8517), // 광주광역시 기준
         level: 7,
       };
       mapRef.current = new kakao.maps.Map(mapContainerRef.current, mapOption);
     }
   }, [isScriptLoaded]);
 
-  // 🚩 3. 마커 표시 및 갱신
+  // 4. pets 변경 시 마커(커스텀 오버레이) 전체를 새로 그림
   useEffect(() => {
     if (!isScriptLoaded || !mapRef.current) return;
 
-    const map = mapRef.current;
     const { kakao } = window;
-
-    // 기존 마커 및 인포윈도우 제거
-    Object.values(markersRef.current).forEach((marker) => marker.setMap(null));
-    markersRef.current = {};
-    if (currentInfowindowRef.current) {
-      currentInfowindowRef.current.close();
-      currentInfowindowRef.current = null;
-    }
-
-    // ✅ public/images 내부의 마커 이미지 경로
-    const missingMarkerImageSrc = "/images/marker_red.png"; // 실종(빨강)
-    const protectedMarkerImageSrc = "/images/marker_blue.png"; // 목격(파랑)
-    const imageSize = new kakao.maps.Size(30, 35);
-
-    const missingMarkerImage = new kakao.maps.MarkerImage(
-      missingMarkerImageSrc,
-      imageSize
-    );
-    const protectedMarkerImage = new kakao.maps.MarkerImage(
-      protectedMarkerImageSrc,
-      imageSize
-    );
-
-    // 🚩 마커 생성 및 이벤트 리스너 추가
-    pets?.forEach((pet) => {
-      const marker = new kakao.maps.Marker({
-        map: map,
-        position: new kakao.maps.LatLng(pet.latlng[0], pet.latlng[1]),
-        title: pet.title || pet.name,
-        image:
-          pet.status === "실종" ? missingMarkerImage : protectedMarkerImage,
-      });
-
-      markersRef.current[pet.id] = marker;
-
-      const content = `
-        <div style="padding:10px; min-width:250px; font-family:'Inter', sans-serif;">
-          <div style="display:flex; align-items:center; gap:10px;">
-            <img src="${pet.img}" alt="${pet.title}" 
-              style="width:64px; height:64px; border-radius:8px; object-fit:cover;">
-            <div>
-              <div style="font-size:14px;">
-                <span style="display:inline-block; padding:2px 8px; border-radius:16px;
-                  font-size:11px; font-weight:600; margin-right:5px;
-                  background-color:${
-                    pet.status === "실종" ? "#fee2e2" : "#dbeafe"
-                  };
-                  color:${pet.status === "실종" ? "#dc2626" : "#2563eb"};">
-                  ${pet.status}
-                </span>
-                <strong>${pet.title || pet.name}</strong>
-              </div>
-              <div style="font-size:12px; color:#666; margin-top:4px;">${
-                pet.time || pet.date
-              }</div>
-              <a href="#" style="font-size:12px; color:#0ea5e9; font-weight:600; margin-top:6px;
-                display:block; text-decoration:none;">자세히 보기</a>
-            </div>
-          </div>
-        </div>`;
-
-      const infowindow = new kakao.maps.InfoWindow({
-        content,
-        removable: true,
-      });
-
-      kakao.maps.event.addListener(marker, "click", function () {
-        if (currentInfowindowRef.current) {
-          currentInfowindowRef.current.close();
-        }
-        infowindow.open(map, marker);
-        currentInfowindowRef.current = infowindow;
-      });
-    });
-  }, [pets, isScriptLoaded]);
-
-  // 🚩 4. selectedPet 변경 시 해당 마커 포커싱
-  useEffect(() => {
-    if (!selectedPet || !mapRef.current || !isScriptLoaded) return;
-
     const map = mapRef.current;
-    const marker = markersRef.current[selectedPet.id];
 
-    if (marker) {
-      map.panTo(marker.getPosition());
-      window.kakao.maps.event.trigger(marker, "click");
+    // 기존 마커 제거
+    markersRef.current.forEach((m) => m.overlay?.setMap(null));
+    markersRef.current = [];
+
+    // bounds: 모든 마커가 화면에 들어오도록 영역 계산
+    const bounds = new kakao.maps.LatLngBounds();
+
+    pets
+      .filter((pet) => Array.isArray(pet.latlng) && pet.latlng.length === 2)
+      .forEach((pet) => {
+        const [lat, lon] = pet.latlng;
+        const position = new kakao.maps.LatLng(lat, lon);
+        bounds.extend(position);
+
+        // 커스텀 마커 DOM 엘리먼트 생성
+        const el = document.createElement("div");
+        el.className = "pet-marker";
+
+        // 마커 구조:
+        //  - 동그란 썸네일
+        //  - 아래쪽 물방울 모양 SVG(핀)
+        el.innerHTML = `
+          <div class="pet-marker-inner">
+            <div class="pet-marker-thumb" style="background-image:url('${
+              pet.img || ""
+            }')"></div>
+            <svg class="pet-marker-pin" viewBox="0 0 40 52" xmlns="http://www.w3.org/2000/svg">
+              <path d="M20 0C9 0 0 8.6 0 19.2C0 32.6 18 51 18.8 51.8C19.2 52.2 19.6 52.4 20 52.4C20.4 52.4 20.8 52.2 21.2 51.8C22 51 40 32.6 40 19.2C40 8.6 31 0 20 0Z" />
+            </svg>
+          </div>
+        `;
+
+        // 커스텀 오버레이 생성 (인포윈도우 대신 이걸 마커처럼 사용)
+        const overlay = new kakao.maps.CustomOverlay({
+          map,
+          position,
+          yAnchor: 1,
+          content: el,
+        });
+
+        // DOM 클릭 이벤트 → 상위로 선택 이벤트 전달
+        el.addEventListener("click", () => {
+          if (onMarkerSelect) {
+            onMarkerSelect(pet);
+          }
+        });
+
+        markersRef.current.push({ pet, overlay, el });
+      });
+
+    // 마커가 하나라도 있으면, 그 범위에 맞게 지도 이동
+    if (!bounds.isEmpty()) {
+      map.setBounds(bounds);
+    }
+  }, [pets, isScriptLoaded, onMarkerSelect]);
+
+  // 5. selectedPet 변경 시
+  //    - 해당 마커만 강조(크기/색상 변경 클래스 부여)
+  //    - 지도 중심을 그 마커 위치로 부드럽게 이동
+  useEffect(() => {
+    if (!isScriptLoaded || !mapRef.current) return;
+
+    const { kakao } = window;
+    const map = mapRef.current;
+
+    // 선택 상태 클래스 초기화
+    markersRef.current.forEach(({ el }) => {
+      el.classList.remove("pet-marker--selected");
+    });
+
+    // 선택 해제(null)면 여기서 끝
+    if (!selectedPet) return;
+
+    const target = markersRef.current.find(
+      ({ pet }) =>
+        pet.id === selectedPet.id &&
+        (pet.type || "default") === (selectedPet.type || "default")
+    );
+
+    if (!target) return;
+
+    // 선택된 마커에만 강조 클래스 부여
+    target.el.classList.add("pet-marker--selected");
+
+    // 지도 중심을 해당 마커 위치로 이동
+    const pos = target.overlay.getPosition();
+    if (pos) {
+      map.panTo(pos);
     }
   }, [selectedPet, isScriptLoaded]);
 
