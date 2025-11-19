@@ -13,7 +13,9 @@ import AISimilarity from "../assets/images/AI Similarity-1.png";
  * - [상세] "카드 상세정보" 레이아웃을 좌측 이미지 / 우측 텍스트의 2열 구조로 통일
  *         (모바일에서는 세로 스택, md 이상에서 2열)
  * - [라우팅] react-router-dom 미사용 기준, window.location.href 사용
- * - [스크롤 애니메이션] 섹션이 화면에 들어올 때 서서히(페이드 + 아래에서 위로) 등장
+ * - [스크롤 애니메이션]
+ *    · 각 섹션이 화면에 들어올 때 서서히(페이드 + 아래에서 위로) 등장
+ *    · 히어로 문구 4줄, 기능 카드는 왼쪽→오른쪽 순서로 순차 등장
  */
 
 /**
@@ -120,7 +122,7 @@ const MainPage = () => {
       {/* =========================================
           1) 히어로 섹션: 첫 화면 가득
           - 고정 헤더 높이를 고려한 최소 높이 설정
-          - 화면 진입 시 서서히 등장 (페이드 + 슬라이드 업)
+          - 화면 진입 시 문구 4줄이 순서대로 스르륵 등장
          ========================================= */}
       <section
         id="intro-hero"
@@ -129,20 +131,33 @@ const MainPage = () => {
       >
         <div
           ref={heroRef}
-          className={`container mx-auto px-4 sm:px-6 lg:px-8 text-center max-w-4xl transform transition-all duration-700 ease-out
-          ${
-            heroVisible
-              ? "opacity-100 translate-y-0"
-              : "opacity-0 translate-y-6"
-          }`}
+          className="container mx-auto px-4 sm:px-6 lg:px-8 text-center max-w-4xl relative"
         >
-          <p className="font-semibold text-lg md:text-xl text-indigo-500 mb-4 tracking-wide">
+          {/* 1) 서브 타이틀 */}
+          <p
+            className={`font-semibold text-lg md:text-xl text-indigo-500 mb-4 tracking-wide transform transition-all duration-700 ease-out
+            ${
+              heroVisible
+                ? "opacity-100 translate-y-0"
+                : "opacity-0 translate-y-6"
+            }`}
+            style={{ transitionDelay: heroVisible ? "0s" : "0s" }}
+          >
             함께하는 마음, 이어주는 기술
           </p>
 
+          {/* 2) 메인 타이틀 */}
           <h1
-            className="font-extrabold text-4xl sm:text-5xl md:text-6xl text-slate-900 mb-8"
-            style={{ lineHeight: 1.25 }}
+            className={`font-extrabold text-4xl sm:text-5xl md:text-6xl text-slate-900 mb-8 transform transition-all duration-700 ease-out
+            ${
+              heroVisible
+                ? "opacity-100 translate-y-0"
+                : "opacity-0 translate-y-6"
+            }`}
+            style={{
+              lineHeight: 1.25,
+              transitionDelay: heroVisible ? "0.15s" : "0s",
+            }}
           >
             <span className="text-sky-300">AI</span>와 함께,{" "}
             <br className="sm:hidden" />
@@ -151,14 +166,31 @@ const MainPage = () => {
             다시 당신의 품으로
           </h1>
 
-          <p className="mt-6 max-w-3xl mx-auto text-lg md:text-xl text-slate-600 leading-relaxed mb-10">
+          {/* 3) 설명 문단 */}
+          <p
+            className={`mt-6 max-w-3xl mx-auto text-lg md:text-xl text-slate-600 leading-relaxed mb-10 transform transition-all duration-700 ease-out
+            ${
+              heroVisible
+                ? "opacity-100 translate-y-0"
+                : "opacity-0 translate-y-6"
+            }`}
+            style={{ transitionDelay: heroVisible ? "0.3s" : "0s" }}
+          >
             ‘이어주개’는 첨단 AI와 이웃의 제보를 연결해
             <br />
             실종·유기동물 재회를 가장 빠르고 확실하게 돕는 통합 플랫폼입니다.
           </p>
 
-          {/* ✅ 유일 CTA → #features 로 스무스 스크롤 */}
-          <div className="mt-10 flex justify-center">
+          {/* 4) CTA 버튼 */}
+          <div
+            className={`mt-10 flex justify-center transform transition-all duration-700 ease-out
+            ${
+              heroVisible
+                ? "opacity-100 translate-y-0"
+                : "opacity-0 translate-y-6"
+            }`}
+            style={{ transitionDelay: heroVisible ? "0.45s" : "0s" }}
+          >
             <a
               href="#features"
               onClick={handleStartJourney}
@@ -181,33 +213,57 @@ const MainPage = () => {
 
       {/* =========================================
           2) 기능 소개 섹션 (Features)
-          - 3개 카드 클릭 시 각 상세 섹션으로 이동
-          - 스크롤로 화면에 들어오면 섹션 전체가 스르륵 등장
+          - 제목/설명, 카드 3개가 순서대로 등장
+          - 카드: 왼쪽 카드 → 가운데 카드 → 오른쪽 카드 순으로 스르륵
          ========================================= */}
       <section id="features" className="py-20 md:py-28 bg-white">
         <div
           ref={featuresRef}
-          className={`container mx-auto px-4 sm:px-6 lg:px-8 max-w-6xl transform transition-all duration-700 ease-out
-          ${
-            featuresVisible
-              ? "opacity-100 translate-y-0"
-              : "opacity-0 translate-y-6"
-          }`}
+          className="container mx-auto px-4 sm:px-6 lg:px-8 max-w-6xl"
         >
-          <h2 className="text-3xl md:text-4xl font-extrabold text-slate-800 text-center mb-4">
+          {/* 섹션 제목 */}
+          <h2
+            className={`text-3xl md:text-4xl font-extrabold text-slate-800 text-center mb-4 transform transition-all duration-700 ease-out
+            ${
+              featuresVisible
+                ? "opacity-100 translate-y-0"
+                : "opacity-0 translate-y-6"
+            }`}
+            style={{ transitionDelay: featuresVisible ? "0s" : "0s" }}
+          >
             우리의 약속, 세 가지 핵심 서비스
           </h2>
-          <p className="text-lg text-slate-500 text-center mb-16 md:mb-20 max-w-2xl mx-auto">
+
+          {/* 섹션 설명 */}
+          <p
+            className={`text-lg text-slate-500 text-center mb-16 md:mb-20 max-w-2xl mx-auto transform transition-all duration-700 ease-out
+            ${
+              featuresVisible
+                ? "opacity-100 translate-y-0"
+                : "opacity-0 translate-y-6"
+            }`}
+            style={{ transitionDelay: featuresVisible ? "0.15s" : "0s" }}
+          >
             “간단한 등록 → 지도와 AI의 연결 → 입양까지” 하나의 흐름으로
             이어집니다.
           </p>
 
+          {/* 기능 카드 3개: 왼쪽부터 순서대로 등장 */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8 md:gap-10 text-center items-stretch">
             {/* --- 카드 1: AI 기반 실종 탐색 --- */}
             <button
               type="button"
               onClick={goDetail("detail-ai")}
-              className="h-full bg-white p-8 md:p-10 rounded-3xl shadow-lg border-2 border-transparent transition duration-300 hover:border-sky-300 hover:shadow-xl transform hover:-translate-y-2 focus:outline-none focus:ring-4 focus:ring-sky-200 flex flex-col items-center pt-10 space-y-5"
+              className={`h-full bg-white p-8 md:p-10 rounded-3xl shadow-lg border-2 border-transparent transition duration-300 hover:border-sky-300 hover:shadow-xl transform hover:-translate-y-2 focus:outline-none focus:ring-4 focus:ring-sky-200 flex flex-col items-center pt-10 space-y-5
+              ${
+                featuresVisible
+                  ? "opacity-100 translate-y-0"
+                  : "opacity-0 translate-y-6"
+              }`}
+              style={{
+                transition: "all 0.7s ease-out",
+                transitionDelay: featuresVisible ? "0.25s" : "0s",
+              }}
               aria-label="AI 기반 실종 탐색 기능 자세히 보기"
             >
               <div className="w-20 h-20 rounded-full bg-sky-50 flex items-center justify-center shadow-inner shrink-0">
@@ -241,7 +297,16 @@ const MainPage = () => {
             <button
               type="button"
               onClick={goDetail("detail-map")}
-              className="h-full bg-white p-8 md:p-10 rounded-3xl shadow-lg border-2 border-transparent transition duration-300 hover:border-sky-300 hover:shadow-xl transform hover:-translate-y-2 focus:outline-none focus:ring-4 focus:ring-sky-200 flex flex-col items-center pt-10 space-y-5"
+              className={`h-full bg-white p-8 md:p-10 rounded-3xl shadow-lg border-2 border-transparent transition duration-300 hover:border-sky-300 hover:shadow-xl transform hover:-translate-y-2 focus:outline-none focus:ring-4 focus:ring-sky-200 flex flex-col items-center pt-10 space-y-5
+              ${
+                featuresVisible
+                  ? "opacity-100 translate-y-0"
+                  : "opacity-0 translate-y-6"
+              }`}
+              style={{
+                transition: "all 0.7s ease-out",
+                transitionDelay: featuresVisible ? "0.4s" : "0s",
+              }}
               aria-label="사용자 참여형 제보 기능 자세히 보기"
             >
               <div className="w-20 h-20 rounded-full bg-sky-50 flex items-center justify-center shadow-inner shrink-0">
@@ -281,7 +346,16 @@ const MainPage = () => {
             <button
               type="button"
               onClick={goDetail("detail-adopt")}
-              className="h-full bg-white p-8 md:p-10 rounded-3xl shadow-lg border-2 border-transparent transition duration-300 hover:border-sky-300 hover:shadow-xl transform hover:-translate-y-2 focus:outline-none focus:ring-4 focus:ring-sky-200 flex flex-col items-center pt-10 space-y-5"
+              className={`h-full bg-white p-8 md:p-10 rounded-3xl shadow-lg border-2 border-transparent transition duration-300 hover:border-sky-300 hover:shadow-xl transform hover:-translate-y-2 focus:outline-none focus:ring-4 focus:ring-sky-200 flex flex-col items-center pt-10 space-y-5
+              ${
+                featuresVisible
+                  ? "opacity-100 translate-y-0"
+                  : "opacity-0 translate-y-6"
+              }`}
+              style={{
+                transition: "all 0.7s ease-out",
+                transitionDelay: featuresVisible ? "0.55s" : "0s",
+              }}
               aria-label="맞춤 입양 추천 기능 자세히 보기"
             >
               <div className="w-20 h-20 rounded-full bg-sky-50 flex items-center justify-center shadow-inner shrink-0">
@@ -318,23 +392,27 @@ const MainPage = () => {
           3) 상세 섹션들 (카드 상세정보)
           - 공통 레이아웃: 좌측 이미지 / 우측 텍스트 (md 이상 2열)
           - 모바일에서는 세로 스택(이미지 → 텍스트)
-          - 각 섹션이 화면에 들어오면 스르륵 등장
+          - 각 섹션이 화면에 들어오면
+            · 이미지 → 제목/본문 → 리스트 → 버튼 순서로 스르륵 등장
          ========================================= */}
 
       {/* --- 상세 1: AI 정보 제공 --- */}
       <section id="detail-ai" className="py-20 md:py-28 bg-slate-50">
         <div
           ref={detailAiRef}
-          className={`container mx-auto px-4 sm:px-6 lg:px-8 max-w-6xl transform transition-all duration-700 ease-out
-          ${
-            detailAiVisible
-              ? "opacity-100 translate-y-0"
-              : "opacity-0 translate-y-6"
-          }`}
+          className="container mx-auto px-4 sm:px-6 lg:px-8 max-w-6xl"
         >
           <div className="grid grid-cols-1 md:grid-cols-2 gap-10 md:gap-14 items-center">
             {/* 좌측: 이미지(플레이스홀더 SVG) */}
-            <div className="order-1 md:order-none">
+            <div
+              className={`order-1 md:order-none transform transition-all duration-700 ease-out
+              ${
+                detailAiVisible
+                  ? "opacity-100 translate-y-0"
+                  : "opacity-0 translate-y-6"
+              }`}
+              style={{ transitionDelay: detailAiVisible ? "0.1s" : "0s" }}
+            >
               <div className="bg-white rounded-2xl shadow-lg p-6 md:p-10 flex items-center justify-center">
                 <img
                   src={reuniteImg}
@@ -346,18 +424,37 @@ const MainPage = () => {
 
             {/* 우측: 텍스트/버튼 */}
             <div>
-              {/* 간단 요약 타이틀 */}
-              <h3 className="text-2xl md:text-3xl font-extrabold text-slate-800 mb-4 break-keep whitespace-pre-line">
-                AI가 실종 등록 정보를 토대로 보호자와 반려동물의 재회를 돕습니다
-              </h3>
-              <p className="text-slate-600 mb-6">
-                사진과 특징을 등록하면, AI가 전국 보호소 데이터를 분석하여 유사
-                개체를 탐색합니다. 실시간으로 갱신되는 공고를 비교해 재회
-                가능성이 높은 후보를 자동으로 안내합니다.
-              </p>
+              {/* 간단 요약 타이틀 + 본문 */}
+              <div
+                className={`transform transition-all duration-700 ease-out
+                ${
+                  detailAiVisible
+                    ? "opacity-100 translate-y-0"
+                    : "opacity-0 translate-y-6"
+                }`}
+                style={{ transitionDelay: detailAiVisible ? "0.25s" : "0s" }}
+              >
+                <h3 className="text-2xl md:text-3xl font-extrabold text-slate-800 mb-4 break-keep whitespace-pre-line">
+                  AI가 실종 등록 정보를 토대로 보호자와 반려동물의 재회를
+                  돕습니다
+                </h3>
+                <p className="text-slate-600 mb-6">
+                  사진과 특징을 등록하면, AI가 전국 보호소 데이터를 분석하여
+                  유사 개체를 탐색합니다. 실시간으로 갱신되는 공고를 비교해 재회
+                  가능성이 높은 후보를 자동으로 안내합니다.
+                </p>
+              </div>
 
               {/* 상세 설명(불릿) */}
-              <ul className="list-disc pl-5 text-slate-700 leading-7 mb-8">
+              <ul
+                className={`list-disc pl-5 text-slate-700 leading-7 mb-8 transform transition-all duration-700 ease-out
+                ${
+                  detailAiVisible
+                    ? "opacity-100 translate-y-0"
+                    : "opacity-0 translate-y-6"
+                }`}
+                style={{ transitionDelay: detailAiVisible ? "0.4s" : "0s" }}
+              >
                 <li>
                   등록된 사진과 특징을 벡터화하여 시각적·의미적 유사도 분석
                 </li>
@@ -368,7 +465,15 @@ const MainPage = () => {
               </ul>
 
               {/* 관련 페이지 이동 버튼 */}
-              <div className="flex flex-wrap gap-3">
+              <div
+                className={`flex flex-wrap gap-3 transform transition-all duration-700 ease-out
+                ${
+                  detailAiVisible
+                    ? "opacity-100 translate-y-0"
+                    : "opacity-0 translate-y-6"
+                }`}
+                style={{ transitionDelay: detailAiVisible ? "0.55s" : "0s" }}
+              >
                 <button
                   onClick={navigate("/register-pet")}
                   className="px-6 py-3 rounded-xl bg-sky-500 text-white font-semibold shadow hover:bg-sky-600 transition"
@@ -391,16 +496,19 @@ const MainPage = () => {
       <section id="detail-map" className="py-20 md:py-28 bg-white">
         <div
           ref={detailMapRef}
-          className={`container mx-auto px-4 sm:px-6 lg:px-8 max-w-6xl transform transition-all duration-700 ease-out
-          ${
-            detailMapVisible
-              ? "opacity-100 translate-y-0"
-              : "opacity-0 translate-y-6"
-          }`}
+          className="container mx-auto px-4 sm:px-6 lg:px-8 max-w-6xl"
         >
           <div className="grid grid-cols-1 md:grid-cols-2 gap-10 md:gap-14 items-center">
             {/* 좌측: 이미지(플레이스홀더 지도) */}
-            <div className="order-1 md:order-none">
+            <div
+              className={`order-1 md:order-none transform transition-all duration-700 ease-out
+              ${
+                detailMapVisible
+                  ? "opacity-100 translate-y-0"
+                  : "opacity-0 translate-y-6"
+              }`}
+              style={{ transitionDelay: detailMapVisible ? "0.1s" : "0s" }}
+            >
               <div className="bg-white rounded-2xl shadow-lg p-6 md:p-10 flex items-center justify-center">
                 <img
                   src={ReportImage}
@@ -412,17 +520,35 @@ const MainPage = () => {
 
             {/* 우측: 텍스트/버튼 */}
             <div>
-              <h3 className="text-2xl md:text-3xl font-extrabold text-slate-800 mb-4 break-keep whitespace-pre-line">
-                사용자의 제보가 누군가의 재회로 연결됩니다
-              </h3>
-              <p className="text-slate-600 mb-6">
-                길에서 발견한 동물을 사진과 함께 제보하면, 정보가 즉시 등록되어
-                실종 데이터와 연동됩니다. AI는 사진과 자연어를 분석하여 높은
-                연관성을 보이는 제보를 식별하고, 보호자에게 실시간으로 알림을
-                전송합니다.
-              </p>
+              <div
+                className={`transform transition-all duration-700 ease-out
+                ${
+                  detailMapVisible
+                    ? "opacity-100 translate-y-0"
+                    : "opacity-0 translate-y-6"
+                }`}
+                style={{ transitionDelay: detailMapVisible ? "0.25s" : "0s" }}
+              >
+                <h3 className="text-2xl md:text-3xl font-extrabold text-slate-800 mb-4 break-keep whitespace-pre-line">
+                  사용자의 제보가 누군가의 재회로 연결됩니다
+                </h3>
+                <p className="text-slate-600 mb-6">
+                  길에서 발견한 동물을 사진과 함께 제보하면, 정보가 즉시
+                  등록되어 실종 데이터와 연동됩니다. AI는 사진과 자연어를
+                  분석하여 높은 연관성을 보이는 제보를 식별하고, 보호자에게
+                  실시간으로 알림을 전송합니다.
+                </p>
+              </div>
 
-              <ul className="list-disc pl-5 text-slate-700 leading-7 mb-8">
+              <ul
+                className={`list-disc pl-5 text-slate-700 leading-7 mb-8 transform transition-all duration-700 ease-out
+                ${
+                  detailMapVisible
+                    ? "opacity-100 translate-y-0"
+                    : "opacity-0 translate-y-6"
+                }`}
+                style={{ transitionDelay: detailMapVisible ? "0.4s" : "0s" }}
+              >
                 <li>
                   제보 시 사진과 위치 정보가 자동 저장되어 정확한 탐색 지원
                 </li>
@@ -432,7 +558,15 @@ const MainPage = () => {
                 <li>보호자에게 연관 제보 발생 시 즉시 알림 발송</li>
               </ul>
 
-              <div className="flex flex-wrap gap-3">
+              <div
+                className={`flex flex-wrap gap-3 transform transition-all duration-700 ease-out
+                ${
+                  detailMapVisible
+                    ? "opacity-100 translate-y-0"
+                    : "opacity-0 translate-y-6"
+                }`}
+                style={{ transitionDelay: detailMapVisible ? "0.55s" : "0s" }}
+              >
                 <button
                   onClick={navigate("/report-sighting")}
                   className="px-6 py-3 rounded-xl bg-sky-500 text-white font-semibold shadow hover:bg-sky-600 transition"
@@ -455,16 +589,19 @@ const MainPage = () => {
       <section id="detail-adopt" className="py-20 md:py-28 bg-slate-50">
         <div
           ref={detailAdoptRef}
-          className={`container mx-auto px-4 sm:px-6 lg:px-8 max-w-6xl transform transition-all duration-700 ease-out
-          ${
-            detailAdoptVisible
-              ? "opacity-100 translate-y-0"
-              : "opacity-0 translate-y-6"
-          }`}
+          className="container mx-auto px-4 sm:px-6 lg:px-8 max-w-6xl"
         >
           <div className="grid grid-cols-1 md:grid-cols-2 gap-10 md:gap-14 items-center">
             {/* 좌측: 이미지(플레이스홀더 카드 리스트) */}
-            <div className="order-1 md:order-none">
+            <div
+              className={`order-1 md:order-none transform transition-all duration-700 ease-out
+              ${
+                detailAdoptVisible
+                  ? "opacity-100 translate-y-0"
+                  : "opacity-0 translate-y-6"
+              }`}
+              style={{ transitionDelay: detailAdoptVisible ? "0.1s" : "0s" }}
+            >
               <div className="bg-white rounded-2xl shadow-lg p-6 md:p-3 flex items-center justify-center">
                 <img
                   src={AISimilarity}
@@ -476,17 +613,35 @@ const MainPage = () => {
 
             {/* 우측: 텍스트/버튼 */}
             <div>
-              <h3 className="text-2xl md:text-3xl font-extrabold text-slate-800 mb-4 break-keep whitespace-pre-line">
-                AI가 사용자에게 이상적인 반려동물을 찾아드립니다
-              </h3>
-              <p className="text-slate-600 mb-6">
-                사용자가 원하는 반려동물의 외형이나 성격을 문장으로 입력하거나,
-                참고 이미지를 업로드하면 AI가 보호소 데이터를 분석합니다.
-                텍스트와 이미지 모두를 이해하는 멀티모달 AI를 통해 사용자 선호에
-                가장 가까운 입양 후보를 제시합니다.
-              </p>
+              <div
+                className={`transform transition-all duration-700 ease-out
+                ${
+                  detailAdoptVisible
+                    ? "opacity-100 translate-y-0"
+                    : "opacity-0 translate-y-6"
+                }`}
+                style={{ transitionDelay: detailAdoptVisible ? "0.25s" : "0s" }}
+              >
+                <h3 className="text-2xl md:text-3xl font-extrabold text-slate-800 mb-4 break-keep whitespace-pre-line">
+                  AI가 사용자에게 이상적인 반려동물을 찾아드립니다
+                </h3>
+                <p className="text-slate-600 mb-6">
+                  사용자가 원하는 반려동물의 외형이나 성격을 문장으로
+                  입력하거나, 참고 이미지를 업로드하면 AI가 보호소 데이터를
+                  분석합니다. 텍스트와 이미지 모두를 이해하는 멀티모달 AI를 통해
+                  사용자 선호에 가장 가까운 입양 후보를 제시합니다.
+                </p>
+              </div>
 
-              <ul className="list-disc pl-5 text-slate-700 leading-7 mb-8">
+              <ul
+                className={`list-disc pl-5 text-slate-700 leading-7 mb-8 transform transition-all duration-700 ease-out
+                ${
+                  detailAdoptVisible
+                    ? "opacity-100 translate-y-0"
+                    : "opacity-0 translate-y-6"
+                }`}
+                style={{ transitionDelay: detailAdoptVisible ? "0.4s" : "0s" }}
+              >
                 <li>자연어와 이미지 입력을 모두 지원하여 맞춤형 검색 가능</li>
                 <li>
                   보호소 데이터의 외형·성격 정보를 통합 분석해 유사도 계산
@@ -494,7 +649,15 @@ const MainPage = () => {
                 <li>개인 선호도에 따른 추천 순위 제공으로 입양 결정을 지원</li>
               </ul>
 
-              <div className="flex flex-wrap gap-3">
+              <div
+                className={`flex flex-wrap gap-3 transform transition-all duration-700 ease-out
+                ${
+                  detailAdoptVisible
+                    ? "opacity-100 translate-y-0"
+                    : "opacity-0 translate-y-6"
+                }`}
+                style={{ transitionDelay: detailAdoptVisible ? "0.55s" : "0s" }}
+              >
                 <button
                   onClick={navigate("/adopt")}
                   className="px-6 py-3 rounded-xl bg-sky-500 text-white font-semibold shadow hover:bg-sky-600 transition"
