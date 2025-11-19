@@ -23,8 +23,9 @@ export default function SearchResultPage() {
   } = location.state || {};
 
   // 2. ◀◀ [수정] 'source'에 따라 임계값(Threshold) 동적 설정
-  // 제보('report')인 경우 30%(0.3), 나머지는 70%(0.7)
-  const similarityThreshold = source === "report" ? 0.3 : 0.7;
+  // 제보('report')와 입양('adopt')인 경우 30%(0.3), 나머지는 70%(0.7)
+  const similarityThreshold =
+    source === "report" || source === "adopt" ? 0.3 : 0.7;
 
   // 3. ◀◀ [수정] 페이지 제목과 설명 설정
   let pageTitle = "AI 유사도 분석 결과";

@@ -385,17 +385,32 @@ export default function RegisterPetPage() {
               />
             </div>
 
-            {/* 날짜 */}
-            <div>
-              <label className="block text-lg font-bold text-slate-800 mb-2">
-                실종 날짜
-              </label>
-              <input
-                type="date"
-                value={lostDate}
-                onChange={(e) => setLostDate(e.target.value)}
-                className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2"
-              />
+            {/* 실종 날짜 및 연락처 */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <label className="block text-lg font-bold text-slate-800 mb-2">
+                  실종 날짜
+                </label>
+                <input
+                  type="date"
+                  value={lostDate}
+                  onChange={(e) => setLostDate(e.target.value)}
+                  onClick={(e) => e.target.showPicker()}
+                  className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 cursor-pointer"
+                />
+              </div>
+              <div>
+                <label className="block text-lg font-bold text-slate-800 mb-2">
+                  연락처
+                </label>
+                <input
+                  type="tel"
+                  value={contact}
+                  onChange={(e) => setContact(e.target.value)}
+                  className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2"
+                  placeholder="예) 010-1234-5678"
+                />
+              </div>
             </div>
 
             {/* 지도/주소 */}
@@ -416,20 +431,6 @@ export default function RegisterPetPage() {
                 readOnly
                 className="w-full px-4 py-3 border border-slate-300 rounded-lg bg-slate-100"
                 placeholder="지도에서 위치를 선택하세요"
-              />
-            </div>
-
-            {/* 연락처 */}
-            <div>
-              <label className="block text-lg font-bold text-slate-800 mb-2">
-                연락처
-              </label>
-              <input
-                type="tel"
-                value={contact}
-                onChange={(e) => setContact(e.target.value)}
-                className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2"
-                placeholder="예) 010-1234-5678"
               />
             </div>
 

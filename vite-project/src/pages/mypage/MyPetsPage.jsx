@@ -282,7 +282,7 @@ export default function MyPetsPage() {
                       <span
                         className={`w-10 h-6 rounded-full relative transition-colors ${
                           p.isLostActive
-                            ? "bg-sky-400 peer-checked:bg-sky-600"
+                            ? "bg-slate-300 peer-checked:bg-sky-400"
                             : "bg-slate-300"
                         }`}
                       >
