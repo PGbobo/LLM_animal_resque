@@ -285,6 +285,7 @@ export default function ReportPage() {
     navigate("/search-results", {
       state: {
         results: matches,
+        source: "report",
         returnTo: "/report",
       },
     });
