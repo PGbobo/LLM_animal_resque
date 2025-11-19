@@ -221,64 +221,95 @@ const WitnessCheckPage = () => {
 
               {/* 선택된 마커가 있을 경우 → 상세정보 */}
               {selectedPet ? (
-                <div className="space-y-3 max-h-[600px] overflow-y-auto">
-                  <div className="w-full rounded-lg overflow-hidden border border-slate-200">
-                    <img
-                      src={selectedPet.img}
-                      alt={selectedPet.title}
-                      className="w-full h-48 object-cover"
-                    />
+                // ✅ 상세 정보 카드 영역
+                <div className="space-y-4 max-h-[600px] overflow-y-auto">
+                  {/* 이미지 영역 - 이미지 폭에 맞춰 박스가 줄어들도록 수정 */}
+                  <div className="w-full flex justify-center">
+                    {/* 안쪽 박스: 이미지 크기에 맞게 줄어드는 컨테이너 */}
+                    <div className="inline-block rounded-2xl overflow-hidden border border-slate-200 bg-slate-100">
+                      <img
+                        src={selectedPet.img}
+                        alt={selectedPet.title}
+                        className="
+                          block           /* 인라인 요소 기본 여백 제거 */
+h-[240px]   /* 너무 큰 이미지는 최대 높이 제한 */
+                          w-auto          /* 가로도 이미지 비율 그대로 */
+                          max-w-full      /* 카드 너비를 넘지 않도록 제한 */
+                          object-contain  /* 이미지 전체가 보이게 */
+                        "
+                      />
+                    </div>
                   </div>
 
-                  <div className="space-y-1 text-sm">
-                    <div className="flex justify-between items-center">
-                      <span className="px-2 py-0.5 text-xs rounded-full bg-sky-100 text-sky-700 font-semibold">
-                        목격 제보
-                      </span>
-                      {/* ✅ 상단 우측: 제보 날짜(CREATED_AT) */}
+                  {/* 텍스트 영역 */}
+                  <div className="space-y-3 text-sm">
+                    {/* 상단 메타 정보 줄 */}
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <span className="px-2 py-0.5 text-xs rounded-full bg-sky-100 text-sky-700 font-semibold">
+                          목격 제보
+                        </span>
+                        {selectedPet.dogCat && (
+                          <span className="text-xs text-slate-500">
+                            동물 구분: {dogCatToLabel(selectedPet.dogCat)}(
+                            {selectedPet.dogCat})
+                          </span>
+                        )}
+                      </div>
+                      {/* 상단 오른쪽: 제보 날짜 (CREATED_AT 기준) */}
                       {selectedPet.createdAtDate && (
-                        <span className="text-xs text-slate-500">
+                        <span className="text-xs text-slate-400">
                           {selectedPet.createdAtDate}
                         </span>
                       )}
                     </div>
 
-                    <p className="text-base font-semibold text-slate-900 mt-1">
+                    {/* 제목 */}
+                    <p className="text-lg font-semibold text-slate-900">
                       {selectedPet.title}
                     </p>
 
-                    {/* 동물 구분 표시 */}
-                    {selectedPet.dogCat && (
-                      <p className="text-xs text-slate-500 mt-1">
-                        동물 구분: {dogCatToLabel(selectedPet.dogCat)}(
-                        {selectedPet.dogCat})
-                      </p>
-                    )}
+                    {/* 구분선 */}
+                    <div className="h-px bg-slate-200 my-1" />
 
-                    {selectedPet.location && (
-                      <p className="text-sm text-slate-700 mt-1">
-                        <span className="font-medium">목격 위치: </span>
-                        {selectedPet.location}
-                      </p>
-                    )}
+                    {/* 세부 정보 블록 */}
+                    <div className="space-y-1 leading-relaxed">
+                      {selectedPet.location && (
+                        <p className="text-slate-700">
+                          <span className="font-medium">목격 위치: </span>
+                          {selectedPet.location}
+                        </p>
+                      )}
 
-                    {/* ✅ 여기: 목격 일시(REPORT_DATE) */}
-                    {selectedPet.date && (
-                      <p className="text-sm text-slate-700">
-                        <span className="font-medium">목격 일시: </span>
-                        {selectedPet.date}
-                      </p>
-                    )}
+                      {selectedPet.date && (
+                        <p className="text-slate-700">
+                          <span className="font-medium">목격 일시: </span>
+                          {selectedPet.date}
+                        </p>
+                      )}
 
+                      {selectedPet.time && (
+                        <p className="text-slate-500 text-xs">
+                          (제보 등록: {selectedPet.time})
+                        </p>
+                      )}
+                    </div>
+
+                    {/* 설명 영역 */}
                     {selectedPet.description && (
-                      <p className="text-sm text-slate-700 mt-2 whitespace-pre-line">
-                        {selectedPet.description}
-                      </p>
+                      <div className="pt-2 border-t border-slate-200">
+                        <p className="text-xs font-semibold text-slate-500 mb-1">
+                          설명
+                        </p>
+                        <p className="text-sm text-slate-700 whitespace-pre-line">
+                          {selectedPet.description}
+                        </p>
+                      </div>
                     )}
                   </div>
                 </div>
               ) : (
-                // 선택된 마커가 없을 때 → 목록
+                // 선택된 마커가 없을 때 → 기존 목록
                 <div className="space-y-2 max-h-[600px] overflow-y-auto">
                   {witnessPosts.map((pet) => (
                     <div
