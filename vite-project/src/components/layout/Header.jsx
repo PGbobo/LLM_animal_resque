@@ -1,7 +1,7 @@
 // src/components/layout/Header.jsx
 
 import { useState, useEffect } from "react";
-import { Link } from "react-router-dom"; // 브라우저용 Link
+import { Link, useLocation } from "react-router-dom"; // ➕ useLocation 추가
 import { useAuth } from "../../hooks/useAuth.js";
 import LoginModal from "../common/LoginModal.jsx";
 import SignupModal from "../common/SignupModal.jsx";
@@ -9,17 +9,24 @@ import SignupModal from "../common/SignupModal.jsx";
 export default function Header() {
   const { isLoggedIn, logout, user } = useAuth();
 
+  // 현재 라우트 경로 정보 (ex: "/", "/missing-pets" ...)
+  const location = useLocation();
+  const isMainPage = location.pathname === "/"; // 메인페이지 여부
+
   // 모달 상태
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
   const [isSignupModalOpen, setIsSignupModalOpen] = useState(false);
 
-  // 스크롤 그림자
+  // 스크롤 여부 (헤더가 페이지 최상단인지 아닌지 체크)
   const [isScrolled, setIsScrolled] = useState(false);
   useEffect(() => {
     const onScroll = () => setIsScrolled(window.scrollY > 10);
     window.addEventListener("scroll", onScroll);
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
+
+  // ➕ 헤더 위에 마우스가 올라와 있는지 여부
+  const [isHover, setIsHover] = useState(false);
 
   // 모바일 배너 상태
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -41,13 +48,39 @@ export default function Header() {
 
   const closeAndGo = () => setMobileOpen(false);
 
+  // ===========================
+  // 헤더 배경/그림자 스타일 계산
+  // ===========================
+  // 메인페이지에서는:
+  //  - 맨 위에 있고(isScrolled=false) + 마우스도 안 올라와 있으면(isHover=false) → 완전 투명
+  //  - 스크롤을 내렸거나(isScrolled=true) 헤더에 마우스를 올리면(isHover=true) → 흰 배경 + 블러
+  //
+  // 다른 페이지에서는:
+  //  - 항상 기존처럼 흰 배경 + 블러 유지
+  const shouldUseTransparentOnMain = isMainPage && !isScrolled && !isHover; // 투명 상태로 둘 조건
+
+  const headerBgClass = shouldUseTransparentOnMain
+    ? "bg-transparent" // 메인 최상단 + 비호버 상태
+    : "bg-white/80 backdrop-blur-lg"; // 나머지 상황(메인 스크롤/호버, 기타 페이지 전체)
+
+  // 그림자: 메인 투명 상태에서는 그림자 제거, 그 외에는 기존 로직에 맞추기
+  let headerShadowClass = "";
+  if (isMainPage) {
+    // 메인: 스크롤 내려가면만 그림자, 맨 위(투명/비투명)는 굳이 얇은 그림자 안 넣고 깔끔하게
+    headerShadowClass = isScrolled ? "shadow-lg" : "";
+  } else {
+    // 다른 페이지: 기존처럼 스크롤 전에는 얇은 그림자, 스크롤 후에는 진한 그림자
+    headerShadowClass = isScrolled ? "shadow-lg" : "shadow-sm";
+  }
+
   return (
     <>
       <header
         id="header"
-        className={`bg-white/80 backdrop-blur-lg fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
-          isScrolled ? "shadow-lg" : "shadow-sm"
-        }`}
+        className={`${headerBgClass} fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${headerShadowClass}`}
+        // ➕ 헤더 전체에 hover 감지 이벤트 추가
+        onMouseEnter={() => setIsHover(true)}
+        onMouseLeave={() => setIsHover(false)}
       >
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-20">
@@ -201,7 +234,7 @@ export default function Header() {
                       <span className="text-sky-400">{user.nickname}</span>님
                     </span>
                   )}
-                  {/* ◀◀ [신규 추가] 관리자일 때만 이 버튼이 보입니다. */}
+                  {/* 관리자일 때만 이 버튼이 보입니다. */}
                   {isLoggedIn && user?.role === "ADMIN" && (
                     <Link
                       to="/admin"
@@ -253,7 +286,7 @@ export default function Header() {
               )}
             </div>
 
-            {/* 모바일/태블릿: 햄버거 버튼 (hd 미만 또는 lg 미만에서 표시) */}
+            {/* 모바일/태블릿: 햄버거 버튼 */}
             <button
               className="lg:hidden hd:hidden inline-flex items-center justify-center w-11 h-11 rounded-md border border-slate-200 text-slate-700 hover:bg-slate-50"
               aria-label="메뉴 열기"
@@ -348,7 +381,7 @@ export default function Header() {
                 님 환영합니다
               </div>
 
-              {/* ◀◀ [신규 추가] 관리자일 때만 이 링크가 보입니다. */}
+              {/* 관리자일 때만 이 링크가 보입니다. */}
               {user && user?.role === "ADMIN" && (
                 <Link
                   to="/admin"

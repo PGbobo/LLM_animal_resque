@@ -3,6 +3,7 @@ import React, { useEffect, useState, useRef } from "react";
 import reuniteImg from "../assets/images/reunite.png";
 import ReportImage from "../assets/images/ReportImage.png";
 import AISimilarity from "../assets/images/AI Similarity-1.png";
+import mainBg from "../assets/images/main_bg.png";
 
 /**
  * MainPage
@@ -127,20 +128,51 @@ const MainPage = () => {
       <section
         id="intro-hero"
         className="relative flex items-center border-b border-sky-100"
-        style={{ minHeight: "calc(100vh - var(--header-h, 80px))" }}
+        style={{
+          // 헤더 높이만큼 뺀 전체 화면 높이
+          minHeight: "calc(100vh - var(--header-h, 80px))",
+
+          // 🔥 1) 위 레이어: 왼쪽은 거의 불투명, 오른쪽으로 갈수록 투명해지는 그라디언트
+          // 🔥 2) 아래 레이어: 실제 배경 이미지
+          backgroundImage: `
+      linear-gradient(
+        to right,
+        rgba(240, 249, 255, 1) 0%,    /* 아주 연한 하늘색(배경) 완전 불투명 */
+        rgba(240, 249, 255, 1) 30%,   /* 왼쪽 30%까지는 이미지 거의 안 보이게 */
+        rgba(240, 249, 255, 0.9) 45%, /* 가운데 근처부터 조금 보이기 시작 */
+        rgba(240, 249, 255, 0.6) 65%, /* 점점 더 투명해짐 */
+        rgba(240, 249, 255, 0.0) 100% /* 맨 오른쪽은 이미지 100% 보이게 */
+      ),
+      url(${mainBg})
+    `,
+          backgroundRepeat: "no-repeat",
+          backgroundPosition: "right center", // ⭐ 이미지 오른쪽 고정
+          backgroundSize: "auto 100%", // 세로를 기준으로 꽉 채우고 가로 비율 유지
+        }}
       >
         <div
           ref={heroRef}
-          className="container mx-auto px-4 sm:px-6 lg:px-8 text-center max-w-4xl relative"
+          className="
+      container
+      max-w-4xl xl:max-w-6xl   /* 🔥 글자가 들어가는 박스 최대 폭 넓힘 */
+      px-4 sm:px-6 lg:px-10   /* 🔥 좌우 여백 */
+      ml-0 mr-auto        /* 🔥 왼쪽으로 붙이고 오른쪽만 auto → 전체 블럭이 좌측 정렬 */
+      relative
+      text-left        // ⭐ 좌측 정렬로 변경
+      pl-8        /* 기본 왼쪽 여백 */
+      md:pl-20    /* 중간 화면에서 여백 증가 */
+      lg:pl-32    /* 큰 화면에서 더 크게 */
+      xl:pl-48      /* 큰 화면 */
+      2xl:pl-64     /* 초대형 화면 (여백 256px 정도) */
+    "
         >
           {/* 1) 서브 타이틀 */}
           <p
-            className={`font-semibold text-lg md:text-xl text-indigo-500 mb-4 tracking-wide transform transition-all duration-700 ease-out
-            ${
-              heroVisible
-                ? "opacity-100 translate-y-0"
-                : "opacity-0 translate-y-6"
-            }`}
+            className={`
+        font-semibold text-lg md:text-xl text-indigo-500 mb-4 tracking-wide
+        transform transition-all duration-700 ease-out
+        ${heroVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-6"}
+      `}
             style={{ transitionDelay: heroVisible ? "0s" : "0s" }}
           >
             함께하는 마음, 이어주는 기술
@@ -148,32 +180,28 @@ const MainPage = () => {
 
           {/* 2) 메인 타이틀 */}
           <h1
-            className={`font-extrabold text-4xl sm:text-5xl md:text-6xl text-slate-900 mb-8 transform transition-all duration-700 ease-out
-            ${
-              heroVisible
-                ? "opacity-100 translate-y-0"
-                : "opacity-0 translate-y-6"
-            }`}
+            className={`
+        font-extrabold text-4xl sm:text-5xl md:text-6xl text-slate-900 mb-8
+        break-keep
+        transform transition-all duration-700 ease-out
+        ${heroVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-6"}
+      `}
             style={{
               lineHeight: 1.25,
               transitionDelay: heroVisible ? "0.15s" : "0s",
             }}
           >
-            <span className="text-sky-300">AI</span>와 함께,{" "}
-            <br className="sm:hidden" />
-            잃어버린 반려동물을
-            <br />
+            <span className="text-sky-300">AI</span>와 함께, 잃어버린 반려동물을
             다시 당신의 품으로
           </h1>
 
           {/* 3) 설명 문단 */}
           <p
-            className={`mt-6 max-w-3xl mx-auto text-lg md:text-xl text-slate-600 leading-relaxed mb-10 transform transition-all duration-700 ease-out
-            ${
-              heroVisible
-                ? "opacity-100 translate-y-0"
-                : "opacity-0 translate-y-6"
-            }`}
+            className={`
+        mt-6 max-w-3xl text-lg md:text-xl text-slate-600 leading-relaxed mb-10
+        transform transition-all duration-700 ease-out
+        ${heroVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-6"}
+      `}
             style={{ transitionDelay: heroVisible ? "0.3s" : "0s" }}
           >
             ‘이어주개’는 첨단 AI와 이웃의 제보를 연결해
@@ -183,30 +211,25 @@ const MainPage = () => {
 
           {/* 4) CTA 버튼 */}
           <div
-            className={`mt-10 flex justify-center transform transition-all duration-700 ease-out
-            ${
-              heroVisible
-                ? "opacity-100 translate-y-0"
-                : "opacity-0 translate-y-6"
-            }`}
+            className={`
+        mt-10 flex transform transition-all duration-700 ease-out
+        ${heroVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-6"}
+      `}
             style={{ transitionDelay: heroVisible ? "0.45s" : "0s" }}
           >
             <a
               href="#features"
               onClick={handleStartJourney}
-              className="inline-flex items-center justify-center bg-sky-400 text-white font-bold text-lg px-10 py-4 rounded-full shadow-lg hover:shadow-xl hover:bg-sky-500 transition-all duration-300 transform hover:scale-105"
+              className="
+          inline-flex items-center justify-center
+          bg-sky-400 text-white font-bold text-lg
+          px-10 py-4 rounded-full shadow-lg
+          hover:shadow-xl hover:bg-sky-500
+          transition-all duration-300 transform hover:scale-105
+        "
             >
               따뜻한 재회의 여정 시작하기
             </a>
-          </div>
-
-          {/* 배경 그래픽(선택) */}
-          <div
-            aria-hidden
-            className="pointer-events-none absolute inset-0 -z-10"
-          >
-            <div className="absolute -top-10 -left-10 w-72 h-72 rounded-full bg-sky-100 blur-3xl opacity-60" />
-            <div className="absolute -bottom-10 -right-10 w-72 h-72 rounded-full bg-indigo-100 blur-3xl opacity-60" />
           </div>
         </div>
       </section>
