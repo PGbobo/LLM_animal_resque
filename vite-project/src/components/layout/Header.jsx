@@ -121,7 +121,7 @@ export default function Header() {
                     to="/report-sighting"
                     className="block px-5 py-3 text-base text-gray-700 hover:bg-gray-100"
                   >
-                    실종 동물 제보
+                    실종 의심 동물 제보
                   </Link>
                   <Link
                     to="/witness-pets"
@@ -161,7 +161,7 @@ export default function Header() {
                     to="/abandoned-pets"
                     className="block px-5 py-3 text-base text-gray-700 hover:bg-gray-100"
                   >
-                    보호소 동물 보러가기
+                    보호소 동물 조회
                   </Link>
                 </div>
               </div>
@@ -482,7 +482,7 @@ export default function Header() {
                   onClick={closeAndGo}
                   className="block px-3 py-2 rounded hover:bg-slate-50"
                 >
-                  실종 동물 제보
+                  실종 의심 동물 제보
                 </Link>
                 <Link
                   to="/witness-pets"
@@ -532,7 +532,7 @@ export default function Header() {
                   onClick={closeAndGo}
                   className="block px-3 py-2 rounded hover:bg-slate-50"
                 >
-                  보호소 동물 보러가기
+                  보호소 동물 조회
                 </Link>
               </div>
             )}
