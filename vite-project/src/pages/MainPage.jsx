@@ -1,11 +1,11 @@
-// src/pages/IntroPage.jsx
-import React from "react";
+// src/pages/MainPage.jsx
+import React, { useEffect, useState } from "react";
 import reuniteImg from "../assets/images/reunite.png";
 import ReportImage from "../assets/images/ReportImage.png";
 import AISimilarity from "../assets/images/AI Similarity-1.png";
 
 /**
- * IntroPage
+ * MainPage
  * 변경 사항 요약
  * - [히어로] 최초 진입 시 헤더 제외 화면 가득 / CTA 하나만 유지
  * - [이동] CTA 클릭 → #features 로 부드러운 스크롤
@@ -14,7 +14,31 @@ import AISimilarity from "../assets/images/AI Similarity-1.png";
  *         (모바일에서는 세로 스택, md 이상에서 2열)
  * - [라우팅] react-router-dom 미사용 기준, window.location.href 사용
  */
-const IntroPage = () => {
+const MainPage = () => {
+  // --------------------------------
+  // TOP 버튼 관련 상태 및 스크롤 이벤트
+  // --------------------------------
+  const [showTopButton, setShowTopButton] = useState(false);
+
+  // 스크롤 위치에 따라 TOP 버튼 노출/숨김
+  useEffect(() => {
+    const handleScroll = () => {
+      if (window.scrollY > 300) {
+        setShowTopButton(true);
+      } else {
+        setShowTopButton(false);
+      }
+    };
+
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
+
+  // 최상단으로 부드럽게 이동
+  const scrollToTop = () => {
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
   // --------------------------------
   // 공통: 부드러운 스크롤 유틸
   // --------------------------------
@@ -394,8 +418,51 @@ const IntroPage = () => {
 
       {/* 여백(바닥) */}
       <div className="h-10" />
+
+      {/* =========================================
+          TOP 버튼
+          - 스크롤이 일정 이상 내려가면 우측 하단에 노출
+          - 클릭 시 최상단으로 부드럽게 이동
+         ========================================= */}
+      {showTopButton && (
+        <button
+          type="button"
+          onClick={scrollToTop}
+          className="
+    fixed bottom-6
+    right-4
+    md:right-10
+    lg:right-16
+    w-14 h-14
+    bg-sky-50
+    rounded-full
+    shadow-lg
+    flex items-center justify-center
+    transition-all duration-300
+    hover:shadow-xl
+    border-2 border-white
+    "
+          aria-label="페이지 상단으로 이동"
+        >
+          {/* 화살표 아이콘 (위 방향 두 줄) */}
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            fill="none"
+            viewBox="0 -2 24 24"
+            stroke="currentColor"
+            strokeWidth="2"
+            className="w-9 h-9 text-sky-400"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="M7 14l5-5 5 5M7 10l5-5 5 5"
+            />
+          </svg>
+        </button>
+      )}
     </main>
   );
 };
 
-export default IntroPage;
+export default MainPage;
