@@ -1,5 +1,5 @@
 // src/pages/MainPage.jsx
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import reuniteImg from "../assets/images/reunite.png";
 import ReportImage from "../assets/images/ReportImage.png";
 import AISimilarity from "../assets/images/AI Similarity-1.png";
@@ -13,7 +13,52 @@ import AISimilarity from "../assets/images/AI Similarity-1.png";
  * - [상세] "카드 상세정보" 레이아웃을 좌측 이미지 / 우측 텍스트의 2열 구조로 통일
  *         (모바일에서는 세로 스택, md 이상에서 2열)
  * - [라우팅] react-router-dom 미사용 기준, window.location.href 사용
+ * - [스크롤 애니메이션] 섹션이 화면에 들어올 때 서서히(페이드 + 아래에서 위로) 등장
  */
+
+/**
+ * 공통 훅: 스크롤 시 요소 등장 애니메이션을 위한 IntersectionObserver 훅
+ * - ref 를 특정 요소에 연결하면, 해당 요소가 viewport에 들어올 때 visible 상태가 true 로 변경됨
+ * - 한 번 등장 후에는 다시 사라지지 않도록 unobserve 처리
+ */
+const useScrollReveal = (options) => {
+  const [visible, setVisible] = useState(false); // 현재 요소가 화면에 보여지는지 여부
+  const ref = useRef(null); // 관찰할 DOM 요소를 담을 ref
+
+  useEffect(() => {
+    const element = ref.current;
+    if (!element) return;
+
+    // IntersectionObserver 콜백: 요소가 화면에 들어왔는지 여부를 감지
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          // 요소가 일정 비율 이상 보이면 visible = true 로 설정하고 관찰 종료
+          if (entry.isIntersecting) {
+            setVisible(true);
+            observer.unobserve(entry.target);
+          }
+        });
+      },
+      {
+        // 옵션: threshold 0.15 정도면 요소의 15% 정도가 보일 때 애니메이션 시작
+        threshold: 0.15,
+        ...options,
+      }
+    );
+
+    observer.observe(element);
+
+    // 컴포넌트 언마운트 시 observer 정리
+    return () => {
+      if (element) observer.unobserve(element);
+      observer.disconnect();
+    };
+  }, [options]);
+
+  return [ref, visible];
+};
+
 const MainPage = () => {
   // --------------------------------
   // TOP 버튼 관련 상태 및 스크롤 이벤트
@@ -61,18 +106,36 @@ const MainPage = () => {
     window.location.href = path;
   };
 
+  // --------------------------------
+  // 섹션별 스크롤 등장 애니메이션용 훅
+  // --------------------------------
+  const [heroRef, heroVisible] = useScrollReveal();
+  const [featuresRef, featuresVisible] = useScrollReveal();
+  const [detailAiRef, detailAiVisible] = useScrollReveal();
+  const [detailMapRef, detailMapVisible] = useScrollReveal();
+  const [detailAdoptRef, detailAdoptVisible] = useScrollReveal();
+
   return (
     <main className="bg-slate-50">
       {/* =========================================
           1) 히어로 섹션: 첫 화면 가득
           - 고정 헤더 높이를 고려한 최소 높이 설정
+          - 화면 진입 시 서서히 등장 (페이드 + 슬라이드 업)
          ========================================= */}
       <section
         id="intro-hero"
         className="relative flex items-center border-b border-sky-100"
         style={{ minHeight: "calc(100vh - var(--header-h, 80px))" }}
       >
-        <div className="container mx-auto px-4 sm:px-6 lg:px-8 text-center max-w-4xl">
+        <div
+          ref={heroRef}
+          className={`container mx-auto px-4 sm:px-6 lg:px-8 text-center max-w-4xl transform transition-all duration-700 ease-out
+          ${
+            heroVisible
+              ? "opacity-100 translate-y-0"
+              : "opacity-0 translate-y-6"
+          }`}
+        >
           <p className="font-semibold text-lg md:text-xl text-indigo-500 mb-4 tracking-wide">
             함께하는 마음, 이어주는 기술
           </p>
@@ -119,9 +182,18 @@ const MainPage = () => {
       {/* =========================================
           2) 기능 소개 섹션 (Features)
           - 3개 카드 클릭 시 각 상세 섹션으로 이동
+          - 스크롤로 화면에 들어오면 섹션 전체가 스르륵 등장
          ========================================= */}
       <section id="features" className="py-20 md:py-28 bg-white">
-        <div className="container mx-auto px-4 sm:px-6 lg:px-8 max-w-6xl">
+        <div
+          ref={featuresRef}
+          className={`container mx-auto px-4 sm:px-6 lg:px-8 max-w-6xl transform transition-all duration-700 ease-out
+          ${
+            featuresVisible
+              ? "opacity-100 translate-y-0"
+              : "opacity-0 translate-y-6"
+          }`}
+        >
           <h2 className="text-3xl md:text-4xl font-extrabold text-slate-800 text-center mb-4">
             우리의 약속, 세 가지 핵심 서비스
           </h2>
@@ -246,11 +318,20 @@ const MainPage = () => {
           3) 상세 섹션들 (카드 상세정보)
           - 공통 레이아웃: 좌측 이미지 / 우측 텍스트 (md 이상 2열)
           - 모바일에서는 세로 스택(이미지 → 텍스트)
+          - 각 섹션이 화면에 들어오면 스르륵 등장
          ========================================= */}
 
       {/* --- 상세 1: AI 정보 제공 --- */}
       <section id="detail-ai" className="py-20 md:py-28 bg-slate-50">
-        <div className="container mx-auto px-4 sm:px-6 lg:px-8 max-w-6xl">
+        <div
+          ref={detailAiRef}
+          className={`container mx-auto px-4 sm:px-6 lg:px-8 max-w-6xl transform transition-all duration-700 ease-out
+          ${
+            detailAiVisible
+              ? "opacity-100 translate-y-0"
+              : "opacity-0 translate-y-6"
+          }`}
+        >
           <div className="grid grid-cols-1 md:grid-cols-2 gap-10 md:gap-14 items-center">
             {/* 좌측: 이미지(플레이스홀더 SVG) */}
             <div className="order-1 md:order-none">
@@ -308,7 +389,15 @@ const MainPage = () => {
 
       {/* --- 상세 2: 지도 시각화 --- */}
       <section id="detail-map" className="py-20 md:py-28 bg-white">
-        <div className="container mx-auto px-4 sm:px-6 lg:px-8 max-w-6xl">
+        <div
+          ref={detailMapRef}
+          className={`container mx-auto px-4 sm:px-6 lg:px-8 max-w-6xl transform transition-all duration-700 ease-out
+          ${
+            detailMapVisible
+              ? "opacity-100 translate-y-0"
+              : "opacity-0 translate-y-6"
+          }`}
+        >
           <div className="grid grid-cols-1 md:grid-cols-2 gap-10 md:gap-14 items-center">
             {/* 좌측: 이미지(플레이스홀더 지도) */}
             <div className="order-1 md:order-none">
@@ -364,7 +453,15 @@ const MainPage = () => {
 
       {/* --- 상세 3: 자연어 기반 입양 추천 --- */}
       <section id="detail-adopt" className="py-20 md:py-28 bg-slate-50">
-        <div className="container mx-auto px-4 sm:px-6 lg:px-8 max-w-6xl">
+        <div
+          ref={detailAdoptRef}
+          className={`container mx-auto px-4 sm:px-6 lg:px-8 max-w-6xl transform transition-all duration-700 ease-out
+          ${
+            detailAdoptVisible
+              ? "opacity-100 translate-y-0"
+              : "opacity-0 translate-y-6"
+          }`}
+        >
           <div className="grid grid-cols-1 md:grid-cols-2 gap-10 md:gap-14 items-center">
             {/* 좌측: 이미지(플레이스홀더 카드 리스트) */}
             <div className="order-1 md:order-none">
@@ -429,19 +526,17 @@ const MainPage = () => {
           type="button"
           onClick={scrollToTop}
           className="
-    fixed bottom-6
-    right-4
-    md:right-10
-    lg:right-16
-    w-14 h-14
-    bg-sky-50
-    rounded-full
-    shadow-lg
-    flex items-center justify-center
-    transition-all duration-300
-    hover:shadow-xl
-    border-2 border-white
-    "
+            fixed bottom-6
+            right-4 md:right-10 lg:right-16
+            w-14 h-14
+            bg-sky-50
+            rounded-full
+            shadow-lg
+            flex items-center justify-center
+            transition-all duration-300
+            hover:shadow-xl
+            border-2 border-white
+          "
           aria-label="페이지 상단으로 이동"
         >
           {/* 화살표 아이콘 (위 방향 두 줄) */}
