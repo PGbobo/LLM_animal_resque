@@ -13,6 +13,8 @@ import PetListItem from "../components/common/PetListItem.jsx";
 const API_BASE =
   import.meta.env?.VITE_API_BASE?.replace(/\/$/, "") || "http://localhost:4000";
 
+// "몇 분 전", "몇 시간 전" 형식으로 표시
+// → 여기서는 주로 CREATED_AT(등록일 기준)으로 사용할 예정
 function timeAgo(input) {
   if (!input) return "";
   const t = new Date(input);
@@ -25,11 +27,10 @@ function timeAgo(input) {
   const yyyy = t.getFullYear();
   const mm = String(t.getMonth() + 1).padStart(2, "0");
   const dd = String(t.getDate()).padStart(2, "0");
-  const hh = String(t.getHours()).padStart(2, "0");
-  const mi = String(t.getMinutes()).padStart(2, "0");
-  return `${yyyy}.${mm}.${dd} ${hh}:${mi}`;
+  return `${yyyy}.${mm}.${dd}`;
 }
 
+// "YYYY.MM.DD" 형식으로 변환
 function fmtDate(input) {
   if (!input) return "";
   const t = new Date(input);
@@ -37,9 +38,7 @@ function fmtDate(input) {
   const yyyy = t.getFullYear();
   const mm = String(t.getMonth() + 1).padStart(2, "0");
   const dd = String(t.getDate()).padStart(2, "0");
-  const hh = String(t.getHours()).padStart(2, "0");
-  const mi = String(t.getMinutes()).padStart(2, "0");
-  return `${yyyy}.${mm}.${dd} ${hh}:${mi}`;
+  return `${yyyy}.${mm}.${dd}`;
 }
 
 const MissingCheckPage = () => {
@@ -69,19 +68,43 @@ const MissingCheckPage = () => {
           const description =
             r.description || r.content || r.feature || r.character || "";
 
+          // ✅ 1) 실종 날짜(LOST_DATE) / 등록 날짜(CREATED_AT) 각각 분리해서 읽기
+          //    - 백엔드에서 어떤 케이스/형식으로 내려와도 대응하도록 여러 키를 체크한다.
+          const lostDateRaw =
+            r.LOST_DATE ??
+            r.lost_date ??
+            r.lostDate ??
+            r.date ?? // 예전에 LOST_DATE AS date 로 내려줬다면 여기로 들어감
+            null;
+
+          const createdAtRaw =
+            r.CREATED_AT ?? r.created_at ?? r.createdAt ?? r.created ?? null;
+
+          // ✅ 2) 목록에서 사용할 상대 시간(예: "3시간 전")은
+          //       "등록 날짜(CREATED_AT)" 기준으로 표시하고,
+          //       없으면 실종 날짜 기준으로 대체한다.
+          const time = timeAgo(createdAtRaw || lostDateRaw);
+
+          // ✅ 3) 상세에서 보여줄 날짜 문자열
+          //   - 실종 일시: lostDate
+          //   - 상단 오른쪽(작성/등록일): createdAtDate
+          const lostDate = fmtDate(lostDateRaw);
+          const createdAtDate = fmtDate(createdAtRaw || lostDateRaw);
+
           return {
             id: r.id, // MISSING_NUM AS id
             title: name || "실종 동물", // 카드 상단 제목
             name, // PetListItem에서 사용할 이름
             status: r.status || "실종",
             location: r.location || "",
-            time: timeAgo(r.date), // LOST_DATE AS date
+            time, // 목록에서 사용할 상대 시간 (등록일 기준)
             img: r.img || r.img_path || "/images/placeholders/missing.png", // PET_IMAGE_URL AS img
             latlng:
               r.lat != null && r.lon != null
                 ? [Number(r.lat), Number(r.lon)]
                 : null,
-            date: fmtDate(r.date),
+            date: lostDate, // 🔹 실종 일시 (LOST_DATE)
+            createdAtDate, // 🔹 등록/제보 날짜 (CREATED_AT)
             description,
             type,
             raw: r,
@@ -89,8 +112,12 @@ const MissingCheckPage = () => {
         });
 
         // 최신순 정렬
+        // - 우선 CREATED_AT 기준 정렬
+        // - 없으면 LOST_DATE 기준으로 정렬
         mapped.sort(
-          (a, b) => new Date(b.raw?.date || 0) - new Date(a.raw?.date || 0)
+          (a, b) =>
+            new Date(b.raw?.CREATED_AT || b.raw?.LOST_DATE || 0) -
+            new Date(a.raw?.CREATED_AT || a.raw?.LOST_DATE || 0)
         );
 
         if (!cancelled) setPets(mapped);
@@ -191,9 +218,10 @@ const MissingCheckPage = () => {
                       <span className="px-2 py-0.5 text-xs rounded-full bg-red-100 text-red-700 font-semibold">
                         {selectedPet.status || "실종"}
                       </span>
-                      {selectedPet.time && (
+                      {/* ✅ 상단 오른쪽: 등록/제보 날짜 (CREATED_AT) */}
+                      {selectedPet.createdAtDate && (
                         <span className="text-xs text-slate-500">
-                          {selectedPet.time}
+                          {selectedPet.createdAtDate}
                         </span>
                       )}
                     </div>
@@ -209,6 +237,7 @@ const MissingCheckPage = () => {
                       </p>
                     )}
 
+                    {/* ✅ 실종 일시: LOST_DATE */}
                     {selectedPet.date && (
                       <p className="text-sm text-slate-700">
                         <span className="font-medium">실종 일시: </span>

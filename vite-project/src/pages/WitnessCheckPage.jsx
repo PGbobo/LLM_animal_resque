@@ -3,9 +3,16 @@ import React, { useEffect, useMemo, useState } from "react";
 import KakaoMap from "../components/KakaoMap.jsx";
 import PetListItem from "../components/common/PetListItem.jsx";
 
+// 🐶🐱 기본 이미지
+import defaultDogImg from "../assets/images/default_dog.png";
+import defaultCatImg from "../assets/images/default_cat.png";
+import defaultOtherImg from "../assets/images/default_other.png";
+
+// 백엔드 API 기본 주소
 const API_BASE =
   import.meta.env?.VITE_API_BASE?.replace(/\/$/, "") || "http://localhost:4000";
 
+// "몇 분 전" 형식
 function timeAgo(input) {
   if (!input) return "";
   const t = new Date(input);
@@ -18,11 +25,10 @@ function timeAgo(input) {
   const yyyy = t.getFullYear();
   const mm = String(t.getMonth() + 1).padStart(2, "0");
   const dd = String(t.getDate()).padStart(2, "0");
-  const hh = String(t.getHours()).padStart(2, "0");
-  const mi = String(t.getMinutes()).padStart(2, "0");
-  return `${yyyy}.${mm}.${dd} ${hh}:${mi}`;
+  return `${yyyy}.${mm}.${dd}`;
 }
 
+// "YYYY.MM.DD" 형식
 function fmtDate(input) {
   if (!input) return "";
   const t = new Date(input);
@@ -30,9 +36,16 @@ function fmtDate(input) {
   const yyyy = t.getFullYear();
   const mm = String(t.getMonth() + 1).padStart(2, "0");
   const dd = String(t.getDate()).padStart(2, "0");
-  const hh = String(t.getHours()).padStart(2, "0");
-  const mi = String(t.getMinutes()).padStart(2, "0");
-  return `${yyyy}.${mm}.${dd} ${hh}:${mi}`;
+  return `${yyyy}.${mm}.${dd}`;
+}
+
+// DOG_CAT → 한글 라벨
+function dogCatToLabel(code) {
+  if (!code) return "";
+  const c = code.toUpperCase();
+  if (c === "DOG") return "개";
+  if (c === "CAT") return "고양이";
+  return "기타 동물";
 }
 
 const WitnessCheckPage = () => {
@@ -51,33 +64,85 @@ const WitnessCheckPage = () => {
       try {
         const res = await fetch(`${API_BASE}/witness-posts`);
         if (!res.ok) throw new Error(`/witness-posts 요청 실패: ${res.status}`);
+
         const j = await res.json();
         const rows = j?.data || [];
 
         const mapped = rows.map((r) => {
           const title = r.title || "목격 제보";
           const description = r.content || r.description || "";
+
+          // 1) DOG_CAT 값 읽기
+          const rawDogCat = r.dogCat ?? null;
+
+          const dogCat =
+            typeof rawDogCat === "string"
+              ? rawDogCat.trim().toUpperCase()
+              : null;
+
+          // 2) REPORT_DATE(목격 날짜) / CREATED_AT(제보 날짜) 각각 분리해서 읽기
+          //    - 백엔드에서 스네이크/카멜/대문자 등 어떤 식으로 내려와도 커버하도록 모두 체크
+          const reportDateRaw =
+            r.REPORT_DATE ??
+            r.report_date ??
+            r.reportDate ??
+            r.reported_at ??
+            null; // ← 목격한 날짜
+
+          const createdAtRaw =
+            r.CREATED_AT ??
+            r.created_at ??
+            r.createdAt ??
+            r.created_date ??
+            r.created ??
+            null; // ← 제보를 등록한 날짜
+
+          // 3) 목록에서 사용할 상대 시간(예: "3시간 전")은 보통 제보 날짜 기준으로 표시
+          const time = timeAgo(createdAtRaw || reportDateRaw || r.date || null);
+
+          // 4) 화면에 찍을 형식의 날짜 문자열로 변환
+          const reportDate = fmtDate(reportDateRaw || r.date || null); // 목격 일시
+          const createdAtDate = fmtDate(createdAtRaw || r.date || null); // 제보 날짜
+
+          // 5) 이미지 경로 설정(없으면 기본 이미지)
+          let imgSrc = r.img || r.img_path || null;
+          if (!imgSrc || (typeof imgSrc === "string" && imgSrc.trim() === "")) {
+            if (dogCat === "DOG") {
+              imgSrc = defaultDogImg;
+            } else if (dogCat === "CAT") {
+              imgSrc = defaultCatImg;
+            } else {
+              imgSrc = defaultOtherImg;
+            }
+          }
+
           return {
-            id: r.id, // REPORT_NUM AS id
+            id: r.id,
             type: r.type || "witness",
             title,
             name: title,
             status: "제보",
             location: r.location || "",
-            time: timeAgo(r.date),
-            img: r.img || r.img_path || "/images/placeholders/report.png",
+            time, // 목록에서 사용할 상대 시간(제보 기준)
+            img: imgSrc,
             latlng:
               r.lat != null && r.lon != null
                 ? [Number(r.lat), Number(r.lon)]
                 : null,
-            date: fmtDate(r.date),
+            // 아래 두 개가 핵심!
+            date: reportDate, // "목격 일시"에 사용할 날짜 (REPORT_DATE)
+            createdAtDate, // 상세 상단 우측에 표시할 "제보 날짜" (CREATED_AT)
             description,
             raw: r,
+            dogCat,
           };
         });
 
+        // 최신 제보 순으로 정렬(제보날짜 또는 목격날짜 기준)
         mapped.sort(
-          (a, b) => new Date(b.raw?.date || 0) - new Date(a.raw?.date || 0)
+          (a, b) =>
+            new Date(b.raw?.CREATED_AT || b.raw?.REPORT_DATE || 0) -
+            new Date(a.raw?.CREATED_AT || a.raw?.REPORT_DATE || 0)
         );
 
         if (!cancelled) setPets(mapped);
@@ -120,7 +185,7 @@ const WitnessCheckPage = () => {
                 pets={witnessPosts}
                 selectedPet={selectedPet}
                 onMarkerSelect={handleMarkerSelect}
-                markerVariant="blue" // 🔵 목격 페이지는 기존 파란 마커
+                markerVariant="blue"
               />
             </div>
 
@@ -170,9 +235,10 @@ const WitnessCheckPage = () => {
                       <span className="px-2 py-0.5 text-xs rounded-full bg-sky-100 text-sky-700 font-semibold">
                         목격 제보
                       </span>
-                      {selectedPet.time && (
+                      {/* ✅ 상단 우측: 제보 날짜(CREATED_AT) */}
+                      {selectedPet.createdAtDate && (
                         <span className="text-xs text-slate-500">
-                          {selectedPet.time}
+                          {selectedPet.createdAtDate}
                         </span>
                       )}
                     </div>
@@ -181,6 +247,14 @@ const WitnessCheckPage = () => {
                       {selectedPet.title}
                     </p>
 
+                    {/* 동물 구분 표시 */}
+                    {selectedPet.dogCat && (
+                      <p className="text-xs text-slate-500 mt-1">
+                        동물 구분: {dogCatToLabel(selectedPet.dogCat)}(
+                        {selectedPet.dogCat})
+                      </p>
+                    )}
+
                     {selectedPet.location && (
                       <p className="text-sm text-slate-700 mt-1">
                         <span className="font-medium">목격 위치: </span>
@@ -188,6 +262,7 @@ const WitnessCheckPage = () => {
                       </p>
                     )}
 
+                    {/* ✅ 여기: 목격 일시(REPORT_DATE) */}
                     {selectedPet.date && (
                       <p className="text-sm text-slate-700">
                         <span className="font-medium">목격 일시: </span>
@@ -203,7 +278,7 @@ const WitnessCheckPage = () => {
                   </div>
                 </div>
               ) : (
-                // 선택된 마커가 없을 때 → 기존 목록
+                // 선택된 마커가 없을 때 → 목록
                 <div className="space-y-2 max-h-[600px] overflow-y-auto">
                   {witnessPosts.map((pet) => (
                     <div
