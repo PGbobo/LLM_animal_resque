@@ -1,37 +1,76 @@
-// src/pages/SearchResultPage.jsx (이미지 표시, % 필터링 적용)
+// src/pages/SearchResultPage.jsx
+// (제보 시: 유사도 30% 이상, 퍼센트 숨김, 이름 표시)
 
 import React from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 
-// -----------------------------------------------------------------
-// ❗️ [수정 지점 1] S3 버킷 정보 (NCS 기준)
-// ❗️ llm_animal.py의 bucket_name과 일치해야 합니다.
-const S3_BUCKET_BASE_URL = "https://kr.object.ncloudstorage.com/animal-bucket";
+import { MapPinIcon } from "@heroicons/react/24/outline";
 
-// ❗️ [수정 지점 2] 최소 유사도 점수 (여기 숫자만 수정하세요)
-// ❗️ 0.7 = 70% 이상인 결과만 표시합니다. (예: 0.6 = 60%)
-const MINIMUM_SIMILARITY_THRESHOLD = 0.7; // 70%
+// -----------------------------------------------------------------
+// ❗️ [설정] S3 버킷 정보
+const S3_BUCKET_BASE_URL = "https://kr.object.ncloudstorage.com/animal-bucket";
 // -----------------------------------------------------------------
 
 export default function SearchResultPage() {
   const navigate = useNavigate();
   const location = useLocation();
 
-  // 1. ReportPage에서 navigate로 보낸 'state'에서 "원본" 결과 추출
-  const originalResults = location.state?.results;
-  const returnTo = location.state?.returnTo || "/"; // ◀ 기본값은 홈
+  // 1. 이전 페이지에서 보낸 state 받기
+  const {
+    results: originalResults,
+    returnTo = "/",
+    source = "default",
+  } = location.state || {};
 
-  // 2. ◀◀ [신규] 최소 점수 기준으로 결과 "필터링"
+  // 2. ◀◀ [수정] 'source'에 따라 임계값(Threshold) 동적 설정
+  // 제보('report')인 경우 30%(0.3), 나머지는 70%(0.7)
+  const similarityThreshold = source === "report" ? 0.3 : 0.7;
+
+  // 3. ◀◀ [수정] 페이지 제목과 설명 설정
+  let pageTitle = "AI 유사도 분석 결과";
+  let pageDescription = "분석 결과 중 유사도가 높은 항목입니다.";
+
+  if (source === "register") {
+    pageTitle = "🔎 실종 동물 유사도 분석 결과";
+    pageDescription =
+      "등록하신 실종 동물과 유사한 보호소 동물이 발견되었습니다.";
+  } else if (source === "report") {
+    pageTitle = "📢 제보 동물 유사도 분석 결과";
+    // 문구 변경
+    pageDescription = "제보하신 동물과 생김새가 비슷한 실종 동물을 찾았습니다.";
+  } else if (source === "adopt") {
+    pageTitle = "🐶 AI 입양 추천 결과";
+    pageDescription =
+      "회원님의 취향과 가장 유사한 보호소 동물을 추천해 드립니다.";
+  }
+
+  // 4. 동적 임계값으로 필터링
   const filteredResults = React.useMemo(() => {
-    if (!originalResults) return []; // 원본 결과가 없으면 빈 배열
-
-    // 점수(score)가 MINIMUM_SIMILARITY_THRESHOLD 이상인 항목만 필터링
+    if (!Array.isArray(originalResults)) return [];
     return originalResults.filter(
-      (item) => item.score >= MINIMUM_SIMILARITY_THRESHOLD
+      (item) => item && item.score >= similarityThreshold
     );
-  }, [originalResults]); // originalResults가 바뀔 때만 재계산
+  }, [originalResults, similarityThreshold]);
 
-  // 3. (수정) "필터링된" 결과가 0개이거나, 비정상 접근한 경우
+  // 5. (헬퍼 함수) 파일명에서 '이름' 추출하기
+  // 예: "abandon/missing/5_개새_1762936443522.jpeg" -> "개새"
+  const extractNameFromFilename = (filename) => {
+    try {
+      // 1. 경로가 있다면 파일명만 분리
+      const fileOnly = filename.split("/").pop(); // "5_개새_1762936443522.jpeg"
+      // 2. 언더바(_)로 분리
+      const parts = fileOnly.split("_");
+      // 3. 형식이 맞다면 두 번째 요소(인덱스 1)가 이름
+      if (parts.length >= 3) {
+        return parts[1]; // "개새"
+      }
+      return "이름 미상";
+    } catch (e) {
+      return "이름 미상";
+    }
+  };
+
+  // 6. 결과 없음 처리
   if (!originalResults || filteredResults.length === 0) {
     return (
       <main className="pt-28 pb-16 bg-slate-50 min-h-screen">
@@ -41,13 +80,15 @@ export default function SearchResultPage() {
               검색 결과 없음
             </h1>
             <p className="text-slate-600 mb-6">
-              유사도 분석 결과가 없거나, 설정된 최소 유사도(
-              {(MINIMUM_SIMILARITY_THRESHOLD * 100).toFixed(0)}
-              %) 기준을 만족하는 항목이 없습니다.
+              {source === "adopt"
+                ? "조건에 맞는 입양 추천 동물을 찾지 못했습니다."
+                : `유사도 ${(similarityThreshold * 100).toFixed(
+                    0
+                  )}% 이상인 매칭 결과가 없습니다.`}
             </p>
             <button
               type="button"
-              onClick={() => navigate(returnTo)} // ◀ (수정) '/report' 대신 'returnTo' 사용
+              onClick={() => navigate(returnTo)}
               className="px-8 py-3 text-lg font-bold text-white bg-sky-400 rounded-lg hover:bg-sky-500"
             >
               이전 페이지로
@@ -58,56 +99,118 @@ export default function SearchResultPage() {
     );
   }
 
-  // 4. (성공) "필터링된" 결과가 있을 경우, 리스트로 출력
+  // 7. 결과 리스트 출력
   return (
     <main className="pt-28 pb-16 bg-slate-50 min-h-screen">
       <section className="container mx-auto px-4">
         <div className="max-w-4xl mx-auto bg-white p-8 rounded-2xl shadow-lg">
-          <h1 className="text-3xl font-extrabold text-sky-500 mb-6">
-            AI 유사도 분석 결과
+          <h1 className="text-3xl font-extrabold text-sky-500 mb-2">
+            {pageTitle}
           </h1>
-          <p className="text-slate-600 mb-6 -mt-4">
-            (유사도 {(MINIMUM_SIMILARITY_THRESHOLD * 100).toFixed(0)}% 이상인
-            결과만 표시됩니다)
-          </p>
+          <p className="text-slate-600 mb-6">{pageDescription}</p>
+
+          {/* 제보가 아닐 때만 기준 문구 표시 */}
+          {source !== "report" && (
+            <p className="text-sm text-slate-500 mb-6 text-right">
+              * 유사도 {(similarityThreshold * 100).toFixed(0)}% 이상만 표시
+            </p>
+          )}
 
           <div className="space-y-4">
-            {/* 5. (수정) 'filteredResults' 배열을 map()으로 순회 */}
             {filteredResults.map((item, index) => {
-              // ◀◀ [신규] S3 키(filename)로 전체 이미지 URL 생성
-              // (S3_BUCKET_BASE_URL의 마지막에 /가 없고, item.filename의 시작에 /가 없다고 가정)
+              // (안전장치) item이나 filename이 없으면 렌더링 건너뛰기
+              if (!item || !item.filename) return null;
+
               const imageUrl = `${S3_BUCKET_BASE_URL}/${item.filename}`;
+              let detailLink = null;
+
+              // (입양 링크 로직 유지)
+              if (
+                source === "adopt" &&
+                item.filename.includes("crawled_data")
+              ) {
+                try {
+                  const parts = item.filename.split("/");
+                  if (parts.length >= 2) {
+                    const boardIdx = parts[1];
+                    detailLink = `https://www.kcanimal.or.kr/board_gallery01/board_content.asp?board_idx=${boardIdx}&tname=board_gallery01`;
+                  }
+                } catch (e) {
+                  console.warn("링크 생성 실패:", item.filename);
+                }
+              }
+
+              // ◀◀ [신규] 제보('report')일 때 표시할 이름 추출
+              const extractedName =
+                source === "report"
+                  ? extractNameFromFilename(item.filename)
+                  : null;
 
               return (
                 <div
                   key={index}
-                  // (수정) ◀◀ 이미지와 내용을 가로로 정렬하기 위해 'gap-4' 추가
-                  className="flex items-center p-4 border border-slate-200 rounded-lg shadow-sm gap-4"
+                  className="flex flex-col sm:flex-row items-center p-4 border border-slate-200 rounded-lg shadow-sm gap-4 bg-white hover:shadow-md transition-shadow"
                 >
-                  {/* ◀◀ [신규] 파일명 대신 '이미지' 표시 */}
+                  {/* 이미지 */}
                   <img
                     src={imageUrl}
-                    alt={item.filename} // 이미지가 깨졌을 때 파일명 표시
+                    alt="검색 결과"
                     className="w-24 h-24 object-cover rounded-md border border-slate-200 flex-shrink-0"
-                    // (중요) S3 버킷 권한 문제로 이미지가 깨질(X) 수 있습니다.
+                    onError={(e) => {
+                      e.target.onerror = null;
+                      e.target.src =
+                        "https://placehold.co/100x100?text=No+Image";
+                    }}
                   />
 
-                  {/* (수정) ◀◀ 순위와 정보 (div로 감싸기) */}
-                  <div className="flex items-center flex-grow">
-                    <span className="text-2xl font-bold text-sky-400 w-12">
+                  {/* 텍스트 정보 */}
+                  <div className="flex items-center flex-grow w-full sm:w-auto">
+                    {/* 순위 (제보는 순위가 덜 중요할 수 있지만, 일단 유지) */}
+                    <span className="text-2xl font-bold text-sky-400 w-12 text-center sm:text-left">
                       {index + 1}
                     </span>
+
                     <div className="flex-1">
-                      <p className="font-bold text-slate-800 text-lg">
-                        {/* 점수를 0~100%로 변환 */}
-                        유사도: {(item.score * 100).toFixed(2)}%
-                      </p>
-                      <p className="text-xs text-slate-500 mt-1 break-all">
-                        {/* 파일명은 참고용으로 작게 표시 */}
-                        (파일명: {item.filename})
-                      </p>
+                      {/* ◀◀ [분기 처리] 제보 vs 나머지 */}
+                      {source === "report" ? (
+                        // [Case A] 제보: 이름과 위치 표시 (DB 데이터 사용)
+                        <>
+                          <p className="font-bold text-slate-800 text-lg">
+                            이름:{" "}
+                            <span className="text-red-500">
+                              {item.petName || "이름 미상"}
+                            </span>
+                          </p>
+                          <p className="text-sm text-slate-600 mt-1 flex items-center">
+                            <MapPinIcon className="w-4 h-4 mr-1 text-gray-400" />
+                            실종 위치: {item.location || "위치 정보 없음"}
+                          </p>
+                        </>
+                      ) : (
+                        // [Case B] 나머지: 유사도 표시
+                        <>
+                          <p className="font-bold text-slate-800 text-lg">
+                            유사도: {(item.score * 100).toFixed(2)}%
+                          </p>
+                          <p className="text-xs text-slate-500 mt-1">
+                            광주광역시 동물보호센터
+                          </p>
+                        </>
+                      )}
                     </div>
                   </div>
+
+                  {/* 입양 상세 버튼 (유지) */}
+                  {detailLink && (
+                    <a
+                      href={detailLink}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="mt-2 sm:mt-0 px-4 py-2 text-sm font-bold text-white bg-sky-400 rounded-lg hover:bg-blue-500 transition-colors whitespace-nowrap"
+                    >
+                      보호소 공고 보기
+                    </a>
+                  )}
                 </div>
               );
             })}
@@ -115,10 +218,10 @@ export default function SearchResultPage() {
 
           <button
             type="button"
-            onClick={() => navigate(returnTo)} // '제보(검색)' 페이지로 돌아가기
-            className="mt-8 px-8 py-3 text-lg font-bold text-white bg-sky-400 rounded-lg hover:bg-sky-500"
+            onClick={() => navigate(returnTo)}
+            className="mt-8 w-full sm:w-auto px-8 py-3 text-lg font-bold text-white bg-gray-400 rounded-lg hover:bg-gray-500"
           >
-            다른 사진으로 검색
+            이전으로 돌아가기
           </button>
         </div>
       </section>

@@ -196,7 +196,13 @@ export default function RegisterPetPage() {
         // 2-3. (Task 2) AI 검색 성공! 결과 페이지로 이동
         // alert("실종등록이 완료되었으며, AI 분석 결과 페이지로 이동합니다.");
         // SearchResultPage.jsx로 results 데이터를 state로 전달
-        navigate("/search-results", { state: { results: aiData.results } });
+        navigate("/search-results", {
+          state: {
+            results: aiData.results,
+            source: "register", // ◀◀ 추가
+            returnTo: "/", // (끝나면 홈으로)
+          },
+        });
       } else {
         // (기존 로직) 사진이 없으므로, 등록만 하고 홈으로 이동
         alert("실종등록이 완료되었습니다");
@@ -240,8 +246,6 @@ export default function RegisterPetPage() {
               ></path>
             </svg>
             AI가 분석 중입니다...
-            <br />
-            (최대 30초 소요)
           </div>
         </div>
       )}
@@ -259,7 +263,7 @@ export default function RegisterPetPage() {
             {/* 사진 등록 */}
             <div>
               <label className="block text-lg font-bold text-slate-800 mb-2">
-                사진 등록 (선택)
+                사진 등록 (필수)
               </label>
               <div className="mt-2 flex items-center justify-center w-full">
                 <label className="flex flex-col items-center justify-center w-full h-64 border-2 border-sky-300 border-dashed rounded-lg cursor-pointer bg-sky-50 hover:bg-sky-100">

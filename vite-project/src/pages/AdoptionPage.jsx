@@ -61,8 +61,6 @@ export default function AdoptionPage() {
               ></path>
             </svg>
             AI가 분석 중입니다...
-            <br />
-            (최대 30초 소요)
           </div>
         </div>
       )}
@@ -148,7 +146,13 @@ function ImageSearchTab({ setIsLoading, navigate }) {
       const aiData = await aiResp.json();
 
       // 결과 페이지(SearchResultPage.jsx)로 이동
-      navigate("/search-results", { state: { results: aiData.results } });
+      navigate("/search-results", {
+        state: {
+          results: aiData.results,
+          source: "adopt", // ◀◀ 추가
+          returnTo: "/adopt",
+        },
+      });
     } catch (err) {
       console.error("AI 검색 실패:", err);
       alert("AI 서버 요청 중 오류가 발생했습니다: " + err.message);
@@ -319,7 +323,6 @@ function CriteriaSearchTab({ setIsLoading, navigate }) {
           <option value="">(선택 안 함)</option>
           <option value="새끼">새끼 (Baby)</option>
           <option value="성체">성체 (Adult)</option>
-          <option value="노견/노묘">노견/노묘 (Senior)</option>
         </FormSelect>
 
         <FormSelect
