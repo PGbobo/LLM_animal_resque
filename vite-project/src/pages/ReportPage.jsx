@@ -23,10 +23,10 @@ const TabButton = ({ title, isActive, onClick }) => (
   <button
     type="button"
     onClick={onClick}
-    className={`flex-1 py-3 text-lg font-bold transition-colors border-b-2 ${
+    className={`py-3 px-6 text-lg font-bold transition-colors ${
       isActive
-        ? "border-sky-500 text-sky-600 bg-sky-50"
-        : "border-transparent text-slate-500 hover:text-sky-500 hover:bg-slate-50"
+        ? "border-b-4 border-sky-400 text-sky-500"
+        : "text-slate-500 hover:text-sky-400"
     }`}
   >
     {title}
