@@ -737,7 +737,7 @@ const MainPage = () => {
                   onClick={navigate("/abandoned-pets")}
                   className="px-6 py-3 rounded-xl bg-white text-slate-700 font-semibold border border-slate-300 hover:bg-slate-100 transition"
                 >
-                  보호소 공고 보러가기
+                  보호소 페이지로
                 </button>
               </div>
             </div>
