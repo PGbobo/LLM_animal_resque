@@ -3,7 +3,7 @@ import React, { useEffect, useState, useRef } from "react";
 import reuniteImg from "../assets/images/reunite.png";
 import ReportImage from "../assets/images/ReportImage.png";
 import AISimilarity from "../assets/images/AI Similarity-1.png";
-import mainBg from "../assets/images/main_bg.png";
+import mainBg from "../assets/images/main_bg-5.jpg";
 
 /**
  * MainPage
@@ -135,16 +135,16 @@ const MainPage = () => {
           // 🔥 1) 위 레이어: 왼쪽은 거의 불투명, 오른쪽으로 갈수록 투명해지는 그라디언트
           // 🔥 2) 아래 레이어: 실제 배경 이미지
           backgroundImage: `
-      linear-gradient(
-        to right,
-        rgba(240, 249, 255, 1) 0%,    /* 아주 연한 하늘색(배경) 완전 불투명 */
-        rgba(240, 249, 255, 1) 30%,   /* 왼쪽 30%까지는 이미지 거의 안 보이게 */
-        rgba(240, 249, 255, 0.9) 45%, /* 가운데 근처부터 조금 보이기 시작 */
-        rgba(240, 249, 255, 0.6) 65%, /* 점점 더 투명해짐 */
-        rgba(240, 249, 255, 0.0) 100% /* 맨 오른쪽은 이미지 100% 보이게 */
-      ),
-      url(${mainBg})
-    `,
+            linear-gradient(
+            to right,
+            rgba(240, 249, 255, 1) 0%,    /* 아주 연한 하늘색(배경) 완전 불투명 */
+            rgba(240, 249, 255, 1) 30%,   /* 왼쪽 30%까지는 이미지 거의 안 보이게 */
+            rgba(240, 249, 255, 0.9) 45%, /* 가운데 근처부터 조금 보이기 시작 */
+            rgba(240, 249, 255, 0.6) 65%, /* 점점 더 투명해짐 */
+            rgba(240, 249, 255, 0.0) 100% /* 맨 오른쪽은 이미지 100% 보이게 */
+            ),
+          url(${mainBg})
+        `,
           backgroundRepeat: "no-repeat",
           backgroundPosition: "right center", // ⭐ 이미지 오른쪽 고정
           backgroundSize: "auto 100%", // 세로를 기준으로 꽉 채우고 가로 비율 유지
