@@ -125,67 +125,110 @@ const MainPage = () => {
           - 고정 헤더 높이를 고려한 최소 높이 설정
           - 화면 진입 시 문구 4줄이 순서대로 스르륵 등장
          ========================================= */}
+      {/* =========================================
+          1) 히어로 섹션: 첫 화면 가득
+          - minHeight: 헤더 높이를 뺀 전체 화면
+          - 배경: main_bg-5.jpg 한 장만 깔고,
+                  오버레이 div로 모바일/웹별 투명도 처리
+         ========================================= */}
+      {/* =========================================
+          1) 히어로 섹션: 첫 화면 가득
+          - 배경 이미지: main_bg-5.jpg
+          - PC: 오른쪽 큰 이미지 + 좌측만 그라데이션
+          - 모바일: 그라데이션 제거, 섹션 전체에 반투명 필터만 적용
+         ========================================= */}
       <section
         id="intro-hero"
-        className="relative flex items-center border-b border-sky-100"
+        className="relative flex items-center border-b border-sky-100 overflow-hidden"
         style={{
-          // 헤더 높이만큼 뺀 전체 화면 높이
+          // 헤더 높이를 뺀 전체 화면 높이
           minHeight: "calc(100vh - var(--header-h, 80px))",
 
-          // 🔥 1) 위 레이어: 왼쪽은 거의 불투명, 오른쪽으로 갈수록 투명해지는 그라디언트
-          // 🔥 2) 아래 레이어: 실제 배경 이미지
-          backgroundImage: `
-            linear-gradient(
-            to right,
-            rgba(240, 249, 255, 1) 0%,    /* 아주 연한 하늘색(배경) 완전 불투명 */
-            rgba(240, 249, 255, 1) 30%,   /* 왼쪽 30%까지는 이미지 거의 안 보이게 */
-            rgba(240, 249, 255, 0.9) 45%, /* 가운데 근처부터 조금 보이기 시작 */
-            rgba(240, 249, 255, 0.6) 65%, /* 점점 더 투명해짐 */
-            rgba(240, 249, 255, 0.0) 100% /* 맨 오른쪽은 이미지 100% 보이게 */
-            ),
-          url(${mainBg})
-        `,
+          // 🔹 공통 배경 이미지
+          backgroundImage: `url(${mainBg})`,
           backgroundRepeat: "no-repeat",
-          backgroundPosition: "right center", // ⭐ 이미지 오른쪽 고정
-          backgroundSize: "auto 100%", // 세로를 기준으로 꽉 채우고 가로 비율 유지
+          backgroundSize: "cover", // 화면 비율에 맞게 꽉 채우기
+          backgroundPosition: "70% center", // 사람+강아지가 너무 오른쪽으로 치우치지 않게 약간 왼쪽으로 당김
         }}
       >
+        {/* 🔸 모바일 전용 필터
+            - md 미만에서만 보임
+            - intro-hero 전체에 옅은 하늘색 반투명 레이어 → 글자 가독성 ↑
+            - 그라데이션 없음, 그냥 단색 필터
+        */}
+        <div
+          aria-hidden
+          className="absolute inset-0 md:hidden pointer-events-none"
+          style={{
+            backgroundColor: "rgba(240, 249, 255, 0.8)", // sky-50 계열 + 80% 불투명
+          }}
+        />
+
+        {/* 🔸 PC 전용 그라데이션 오버레이
+            - md 이상에서만 보임
+            - 왼쪽은 불투명하게, 오른쪽으로 갈수록 완전히 투명해짐
+            - 오른쪽 여백 색이 달라 보이지 않도록
+              마지막 구간은 '완전 투명(0)'으로 끝냄
+        */}
+        <div
+          aria-hidden
+          className="absolute inset-0 hidden md:block pointer-events-none"
+          style={{
+            background:
+              "linear-gradient(to right," +
+              "rgba(240,249,255,1) 0%," + // 완전 불투명
+              "rgba(240,249,255,0.97) 35%," +
+              "rgba(240,249,255,0.85) 45%," +
+              "rgba(240,249,255,0.3) 65%," +
+              "rgba(240,249,255,0) 100%)", // 완전 투명 → 이미지만 보임
+          }}
+        />
+
+        {/* 🔸 실제 콘텐츠 박스
+            - 오버레이 위에 올라오도록 relative z-10
+            - 좌측 정렬 + 화면 크기에 따른 왼쪽 여백 조절
+        */}
         <div
           ref={heroRef}
           className="
-      container
-      max-w-4xl xl:max-w-6xl   /* 🔥 글자가 들어가는 박스 최대 폭 넓힘 */
-      px-4 sm:px-6 lg:px-10   /* 🔥 좌우 여백 */
-      ml-0 mr-auto        /* 🔥 왼쪽으로 붙이고 오른쪽만 auto → 전체 블럭이 좌측 정렬 */
-      relative
-      text-left        // ⭐ 좌측 정렬로 변경
-      pl-8        /* 기본 왼쪽 여백 */
-      md:pl-20    /* 중간 화면에서 여백 증가 */
-      lg:pl-32    /* 큰 화면에서 더 크게 */
-      xl:pl-48      /* 큰 화면 */
-      2xl:pl-64     /* 초대형 화면 (여백 256px 정도) */
-    "
+            relative z-10
+            w-full
+            max-w-5xl xl:max-w-6xl   /* 글자 박스 최대 폭 */
+            px-4 sm:px-6 lg:px-10
+            ml-0 mr-auto             /* 전체 박스를 왼쪽으로 붙이기 */
+            text-left
+
+            pl-8                     /* 기본 왼쪽 여백 */
+            md:pl-20                 /* md 이상에서 여백 증가 */
+            lg:pl-32
+            xl:pl-48
+            2xl:pl-64
+          "
         >
           {/* 1) 서브 타이틀 */}
           <p
-            className={`
-        font-semibold text-lg md:text-xl text-indigo-500 mb-4 tracking-wide
-        transform transition-all duration-700 ease-out
-        ${heroVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-6"}
-      `}
+            className={`font-semibold text-lg md:text-xl text-indigo-500 mb-4 tracking-wide transform transition-all duration-700 ease-out
+            ${
+              heroVisible
+                ? "opacity-100 translate-y-0"
+                : "opacity-0 translate-y-6"
+            }`}
             style={{ transitionDelay: heroVisible ? "0s" : "0s" }}
           >
             함께하는 마음, 이어주는 기술
           </p>
 
-          {/* 2) 메인 타이틀 */}
+          {/* 2) 메인 타이틀
+              - break-keep : 한글 단어 단위 줄바꿈 (조사만 떨어지는 것 방지)
+              - 줄바꿈은 화면 폭에 따라 자동 처리
+          */}
           <h1
-            className={`
-        font-extrabold text-4xl sm:text-5xl md:text-6xl text-slate-900 mb-8
-        break-keep
-        transform transition-all duration-700 ease-out
-        ${heroVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-6"}
-      `}
+            className={`font-extrabold text-4xl sm:text-5xl md:text-6xl text-slate-900 mb-8 break-keep transform transition-all duration-700 ease-out
+            ${
+              heroVisible
+                ? "opacity-100 translate-y-0"
+                : "opacity-0 translate-y-6"
+            }`}
             style={{
               lineHeight: 1.25,
               transitionDelay: heroVisible ? "0.15s" : "0s",
@@ -197,11 +240,12 @@ const MainPage = () => {
 
           {/* 3) 설명 문단 */}
           <p
-            className={`
-        mt-6 max-w-3xl text-lg md:text-xl text-slate-600 leading-relaxed mb-10
-        transform transition-all duration-700 ease-out
-        ${heroVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-6"}
-      `}
+            className={`mt-6 max-w-3xl text-lg md:text-xl text-slate-600 leading-relaxed mb-10 transform transition-all duration-700 ease-out
+            ${
+              heroVisible
+                ? "opacity-100 translate-y-0"
+                : "opacity-0 translate-y-6"
+            }`}
             style={{ transitionDelay: heroVisible ? "0.3s" : "0s" }}
           >
             ‘이어주개’는 첨단 AI와 이웃의 제보를 연결해
@@ -211,22 +255,24 @@ const MainPage = () => {
 
           {/* 4) CTA 버튼 */}
           <div
-            className={`
-        mt-10 flex transform transition-all duration-700 ease-out
-        ${heroVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-6"}
-      `}
+            className={`mt-10 flex transform transition-all duration-700 ease-out
+            ${
+              heroVisible
+                ? "opacity-100 translate-y-0"
+                : "opacity-0 translate-y-6"
+            }`}
             style={{ transitionDelay: heroVisible ? "0.45s" : "0s" }}
           >
             <a
               href="#features"
               onClick={handleStartJourney}
               className="
-          inline-flex items-center justify-center
-          bg-sky-400 text-white font-bold text-lg
-          px-10 py-4 rounded-full shadow-lg
-          hover:shadow-xl hover:bg-sky-500
-          transition-all duration-300 transform hover:scale-105
-        "
+                inline-flex items-center justify-center
+                bg-sky-400 text-white font-bold text-lg
+                px-10 py-4 rounded-full shadow-lg
+                hover:shadow-xl hover:bg-sky-500
+                transition-all duration-300 transform hover:scale-105
+              "
             >
               따뜻한 재회의 여정 시작하기
             </a>
