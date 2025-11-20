@@ -178,7 +178,7 @@ export default function RegisterPetPage() {
         const imageBase64 = await fileToBase64(photoFile);
 
         // 2-2. AI 서버(`/api/search`) 호출
-        const aiResp = await fetch(`http://211.188.57.154:5000/api/search`, {
+        const aiResp = await fetch(`${API_BASE}/api/proxy/search`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ image_base64: imageBase64 }),

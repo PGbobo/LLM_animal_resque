@@ -147,7 +147,7 @@ export default function ReportPage() {
   const [isLoading, setIsLoading] = useState(false);
 
   const API_BASE = "http://localhost:4000";
-  const AI_SERVER_URL = "http://211.188.57.154:5000/api/report_sighting";
+  const AI_SERVER_URL = `${API_BASE}/api/proxy/report_sighting`;
 
   // --- 공통 제출 핸들러 ---
   const handleReportSubmit = async (formDataPayload, aiPayload) => {

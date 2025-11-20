@@ -96,7 +96,7 @@ function ImageSearchTab({ setIsLoading, navigate }) {
 
     try {
       const imageBase64 = await fileToBase64(photoFile);
-      const aiResp = await fetch(`http://211.188.57.154:5000/api/search`, {
+      const aiResp = await fetch(`http://localhost:4000/api/proxy/search`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ image_base64: imageBase64 }),
@@ -221,7 +221,7 @@ function CriteriaSearchTab({ setIsLoading, navigate }) {
     console.log("최종 전송 쿼리:", finalQuery);
 
     try {
-      const aiResp = await fetch(`http://211.188.57.154:5000/api/adapt`, {
+      const aiResp = await fetch(`http://localhost:4000/api/proxy/adapt`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ query_text: finalQuery }), // ◀ 수정한 문장을 그대로 전송
