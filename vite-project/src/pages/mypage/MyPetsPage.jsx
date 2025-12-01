@@ -1,26 +1,13 @@
-// src/pages/mypage/MyPetsPage.jsx
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router";
 import { useAuth } from "../../hooks/useAuth"; // AuthContext를 사용한다고 가정
 import { getMyLostPets, deleteMyLostPet } from "../../services/api"; // API 함수 import
 
-// ⚙️ 로컬 스토리지 키 상수 (서버 연동 전 임시 보관용) - 서버 연동으로 대체하여 사용하지 않습니다.
-// const LS_KEY = "my_lost_pets";
+const API_BASE = "http://211.188.57.154:4000";
 
-/**
- * MyPetsPage
- * - 내가 등록한 실종 동물 리스트를 보여주고,
- * 각 항목별로 "실종 상태 유지(모니터링/알림 ON)" 또는
- * "실종 종료(모니터링/알림 OFF)"를 선택/토글할 수 있는 페이지.
- * - 실제 DB (MISSING 테이블) 연동 로직으로 수정되었습니다.
- */
 export default function MyPetsPage() {
   const navigate = useNavigate();
-  // 경로 수정: `../../hooks/useAuth` -> `../../../hooks/useAuth` 또는 `../../hooks/useAuth` (프로젝트 구조에 따라 다름)
-  // 현재 에러는 `../../hooks/useAuth`가 실패했으므로, `mypage`에서 한 단계 더 올라가야 할 가능성이 높습니다.
-  // 안전하게 프로젝트 루트(src) 기준으로 상대 경로를 다시 맞추기 위해, `src/pages/mypage/MyPetsPage.jsx`에서 `src/hooks/useAuth.js`를 가리키려면 `../../../hooks/useAuth` 또는 `/hooks/useAuth`가 필요합니다.
-  // 여기서는 `./`로 시작하는 상대 경로를 수정합니다.
-  const { user, loading: authLoading } = useAuth(); // 사용자 정보 가져오기
+  const { user, token, loading: authLoading } = useAuth(); // 사용자 정보 가져오기
 
   // 🐾 내 실종 등록 동물 목록
   // petName, petAge, species, lostDate, lostLocation, petImageUrl, id(MISSING_NUM) 필드를 사용
@@ -29,16 +16,6 @@ export default function MyPetsPage() {
 
   // ▶ 초기 로드: 서버에서 데이터 불러오기 (로그인된 USER_NUM 기준)
   const fetchMyPets = async () => {
-    // ⭐️ 경로 수정
-    // `src/pages/mypage/MyPetsPage.jsx` 기준, `src/hooks/useAuth.js`로 접근하기 위해 `../../hooks/useAuth` 대신 `../../../hooks/useAuth` 또는 구조에 맞는 경로를 사용해야 합니다.
-    // 임시로, `../..` 대신 `../../..`로 한 번 더 올라가서 `hooks`와 `services`를 찾아보도록 경로를 수정합니다.
-    // 만약 `src/hooks`와 `src/services`라면 `../`를 세 번 사용해야 합니다.
-    // `src/pages/mypage/` -> `src/pages/` -> `src/` -> `.` (루트)
-    // 따라서 `../../../hooks/useAuth`가 올바른 경로입니다.
-
-    // **참고: 실제 프로젝트 구조에 따라 경로가 다를 수 있으나, 컴파일 오류 해결을 위해 경로를 `../../../`로 수정합니다.**
-    // **그러나, 기존 파일에 `../../hooks/useAuth`가 명시되었고, `api.js`가 `src/services/api.js`로 가정되므로, `../../`가 맞을 가능성이 높습니다. 컴파일 환경 문제일 수 있으니, 먼저 `../../`를 유지하고 코드를 다시 제공합니다.**
-
     if (authLoading || !user) {
       setLoading(false);
       return;
@@ -62,8 +39,8 @@ export default function MyPetsPage() {
             p.petImageUrl ||
             "https://placehold.co/96x96/cccccc/000000?text=NO+IMAGE", // 이미지 URL
           // DB Status: '0' (진행중), '1' (종료)
-          isLostActive: p.status === "0",
-          notifySimilar: p.status === "0", // 기본적으로 실종 진행중이면 알림 ON으로 설정 (필요 시 DB에 별도 컬럼 추가 필요)
+          isLostActive: String(p.status) === "0",
+          notifySimilar: p.notifyActive === 1,
         }));
         setPets(mappedPets);
       } else {
@@ -89,45 +66,81 @@ export default function MyPetsPage() {
   // 💾 저장 유틸 (API 호출로 대체)
   const persist = (next) => {
     setPets(next);
-    // TODO: 실종 상태(isLostActive) 토글/알림 토글 시
-    // 해당 pet의 id와 새로운 status를 서버에 업데이트하는 API 호출 로직 구현 필요
-    // (현재는 목록 불러오기 및 삭제 기능만 구현 요청됨)
-    // 예시: updateLostPetStatus(id, { status: newStatus, notify: newNotify });
   };
 
-  // 🔁 실종 상태 토글 (임시 로직, 서버 업데이트 API 필요)
-  const toggleLostActive = (id) => {
-    const next = pets.map((p) => {
-      if (p.id !== id) return p;
-      const newIsLostActive = !p.isLostActive;
-      const newStatus = newIsLostActive ? "0" : "1";
+  // 1. 실종 상태 토글
+  const toggleLostActive = async (id, isLostActive) => {
+    // 현재 실종중(true)이면 -> 종료(false)로 바꿈
+    const newActive = !isLostActive;
+    // DB 값: '0'(실종중/True), '1'(종료/False)
+    const newStatusStr = newActive ? "0" : "1";
 
-      // TODO: 서버 API 호출: 실종 상태 업데이트
-      // updateLostPetStatus(id, { status: newStatus, notifySimilar: newIsLostActive ? p.notifySimilar : false });
+    let newNotifyPayload = undefined;
+    if (newActive === false) {
+      newNotifyPayload = 0;
+    }
 
-      return {
-        ...p,
-        isLostActive: newIsLostActive,
-        // 실종 종료(false)라면 알림도 자동 OFF
-        notifySimilar: newIsLostActive ? p.notifySimilar : false,
-      };
-    });
-    persist(next);
+    try {
+      // 낙관적 업데이트
+      setPets(
+        pets.map((p) => {
+          if (p.id === id) {
+            return {
+              ...p,
+              isLostActive: newActive,
+              // 실종 종료 시 알림도 false로 UI 변경
+              notifySimilar: newActive === false ? false : p.notifySimilar,
+            };
+          }
+          return p;
+        })
+      );
+
+      // 서버 요청
+      const bodyData = { status: newStatusStr };
+      if (newNotifyPayload !== undefined) {
+        bodyData.notifyActive = newNotifyPayload;
+      }
+
+      const res = await fetch(`${API_BASE}/mypets/${id}/status`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(bodyData),
+      });
+
+      if (!res.ok) throw new Error("서버 응답 실패");
+    } catch (e) {
+      console.error("상태 변경 실패:", e);
+      alert("변경 실패");
+      fetchMyPets(); // 실패 시 원상복구
+    }
   };
+  // 2. 알림 상태 토글
+  const toggleNotify = async (id, currentNotify) => {
+    const newNotify = !currentNotify; // true <-> false
 
-  // 🔔 유사 이미지 알림 토글 (임시 로직, 서버 업데이트 API 필요)
-  const toggleNotify = (id) => {
-    const next = pets.map((p) => {
-      if (p.id !== id) return p;
-      // 실종 상태가 꺼져 있으면 알림을 켤 수 없음
-      if (!p.isLostActive) return p;
+    try {
+      // 낙관적 업데이트
+      setPets(
+        pets.map((p) => (p.id === id ? { ...p, notifySimilar: newNotify } : p))
+      );
 
-      // TODO: 서버 API 호출: 알림 상태 업데이트
-      // updateLostPetNotify(id, !p.notifySimilar);
-
-      return { ...p, notifySimilar: !p.notifySimilar };
-    });
-    persist(next);
+      await fetch(`${API_BASE}/mypets/${id}/status`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        // true면 1, false면 0으로 변환해서 전송
+        body: JSON.stringify({ notifyActive: newNotify ? 1 : 0 }),
+      });
+    } catch (e) {
+      console.error("알림 변경 실패:", e);
+      fetchMyPets();
+    }
   };
 
   // 🗑️ 실종 등록 삭제
@@ -247,7 +260,7 @@ export default function MyPetsPage() {
                         type="checkbox"
                         className="peer sr-only"
                         checked={p.isLostActive}
-                        onChange={() => toggleLostActive(p.id)}
+                        onChange={() => toggleLostActive(p.id, p.isLostActive)}
                       />
                       {/* 간단 토글 UI */}
                       {/* ⭐️ 토글 배경: bg-pink-500 (켜짐) / bg-slate-300 (꺼짐) */}
@@ -276,8 +289,7 @@ export default function MyPetsPage() {
                         type="checkbox"
                         className="peer sr-only"
                         checked={p.notifySimilar}
-                        onChange={() => toggleNotify(p.id)}
-                        disabled={!p.isLostActive}
+                        onChange={() => toggleNotify(p.id, p.notifySimilar)}
                       />
                       <span
                         className={`w-10 h-6 rounded-full relative transition-colors ${

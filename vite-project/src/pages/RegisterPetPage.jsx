@@ -44,7 +44,8 @@ export default function RegisterPetPage() {
   const kakaoLoaded = useRef(false);
 
   const KAKAO_APP_KEY = useMemo(() => "7fc0573eaaceb31b52e3a3c9fa97c024", []);
-  const API_BASE = "http://localhost:4000";
+  const API_BASE = "http://211.188.57.154:4000";
+  const AI_BASE = "http://211.188.57.154";
 
   // 사진 변경
   const onPhotoChange = (e) => {
@@ -168,6 +169,23 @@ export default function RegisterPetPage() {
         ? await resp.json()
         : {};
       if (!data?.success) throw new Error(data?.message || "저장 실패");
+
+      // [1-1. 신규 추가] 등록 성공 후, AI 서버 인덱스 새로고침 요청 (Hot Reload)
+      try {
+        console.log("AI 인덱스 새로고침 요청 중...");
+        // Python 서버(app.py)의 /api/refresh_index 호출
+        await fetch(`${AI_BASE}/api/refresh_index`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" }, // CORS 문제 방지용 헤더
+        });
+        console.log("✅ AI 인덱스 새로고침 완료");
+      } catch (err) {
+        console.warn(
+          "⚠️ AI 인덱스 새로고침 실패 (서버가 꺼져있을 수 있음):",
+          err
+        );
+        // (새로고침 실패해도 등록은 된 것이므로 에러를 던지진 않음)
+      }
 
       // --- [신규 로직] 2. 'AI 유사도 검색' 요청 ---
       // (중요) 사진이 첨부된 경우(photoFile)에만 AI 검색을 실행합니다.

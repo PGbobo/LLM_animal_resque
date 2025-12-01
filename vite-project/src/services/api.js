@@ -2,7 +2,7 @@
 
 import axios from "axios";
 
-const API_BASE_URL = "http://localhost:4000";
+const API_BASE_URL = "http://211.188.57.154";
 
 const api = axios.create({
   baseURL: API_BASE_URL,
@@ -71,5 +71,36 @@ export const deleteMyLostPet = async (petId) => {
   // petId를 경로에 포함하여 삭제 요청 (인증은 인터셉터에서 처리)
   return await api.delete(`/mypets/${petId}`);
 };
+
+// ------------------------------------
+// 커뮤니티 API
+// ------------------------------------
+
+// 커뮤니티 게시글 전체 조회
+export const getCommunityPosts = async () => {
+  return await api.get("/community");
+};
+
+// 커뮤니티 게시글 작성
+export const createCommunityPost = async (postData) => {
+  return await api.post("/community", postData);
+};
+
+// 커뮤니티 게시글 삭제
+export const deleteCommunityPost = async (postId) => {
+  return await api.delete(`/community/${postId}`);
+};
+
+// 댓글 작성
+export const addCommentToPost = async (postId, commentData) => {
+  return await api.post(`/community/${postId}/comments`, commentData);
+};
+
+// 댓글 삭제
+export const deleteCommentFromPost = async (postId, commentId) => {
+  return await api.delete(`/community/${postId}/comments/${commentId}`);
+};
+
+// ------------------------------------
 
 export default api;

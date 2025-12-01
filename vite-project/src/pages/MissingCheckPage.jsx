@@ -11,7 +11,8 @@ import KakaoMap from "../components/KakaoMap.jsx";
 import PetListItem from "../components/common/PetListItem.jsx";
 
 const API_BASE =
-  import.meta.env?.VITE_API_BASE?.replace(/\/$/, "") || "http://localhost:4000";
+  import.meta.env?.VITE_API_BASE?.replace(/\/$/, "") ||
+  "http://211.188.57.154:4000";
 
 // "몇 분 전", "몇 시간 전" 형식으로 표시
 // → 여기서는 주로 CREATED_AT(등록일 기준)으로 사용할 예정

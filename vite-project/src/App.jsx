@@ -1,6 +1,6 @@
 // src/App.jsx
 
-import React, { useEffect, useRef } from "react"; // ⭐️ useRef를 import합니다.
+import { useEffect, useRef } from "react"; // ⭐️ useRef를 import합니다.
 import { Routes, Route, Navigate, BrowserRouter } from "react-router-dom";
 import Layout from "./components/layout/Layout.jsx";
 
@@ -14,13 +14,12 @@ import IntroPage from "./pages/IntroPage.jsx";
 import RegisterPetPage from "./pages/RegisterPetPage.jsx";
 import ReportPage from "./pages/ReportPage.jsx";
 import StrayDogPage from "./pages/StrayDogPage.jsx";
-import LiveCheckPage from "./pages/LiveCheckPage.jsx";
 import MissingCheckPage from "./pages/MissingCheckPage.jsx";
 import WitnessCheckPage from "./pages/WitnessCheckPage.jsx";
-import ShelterPage from "./pages/ShelterPage.jsx";
-import HospitalPage from "./pages/HospitalPage.jsx";
 import CommunityListPage from "./pages/community/CommunityListPage.jsx";
 import CommunityDetailPage from "./pages/community/CommunityDetailPage.jsx";
+import CommunityWritePage from "./pages/community/CommunityWritePage.jsx";
+import CommunityEditPage from "./pages/community/CommunityEditPage.jsx";
 import SearchResultPage from "./pages/SearchResultPage.jsx";
 import AdoptionPage from "./pages/AdoptionPage.jsx";
 import EditProfilePage from "./pages/mypage/EditProfilePage.jsx";
@@ -41,27 +40,25 @@ const ProtectedRoute = ({ element: Element, ...rest }) => {
   }
 
   // ⭐️ [수정] 로그인되지 않은 경우
+  useEffect(() => {
+    if (!isLoggedIn && !isAlertShown.current) {
+      // 경고 메시지 출력
+      alert("로그인이 필요한 서비스입니다.");
+
+      // Ref 값을 true로 설정하여 다시는 출력되지 않도록 합니다.
+      isAlertShown.current = true;
+    }
+
+    // 로그인 성공 시 Ref 값을 false로 재설정
+    if (isLoggedIn) {
+      isAlertShown.current = false;
+    }
+  }, [isLoggedIn]);
+
   if (!isLoggedIn) {
-    useEffect(() => {
-      // Ref를 확인하여 이 경로에 들어왔을 때 메시지를 한 번도 출력하지 않았으면 실행
-      if (!isAlertShown.current) {
-        // 경고 메시지 출력
-        alert("로그인이 필요한 서비스입니다.");
-
-        // Ref 값을 true로 설정하여 다시는 출력되지 않도록 합니다.
-        isAlertShown.current = true;
-      }
-    }, [isLoggedIn]); // isLoggedIn이 false인 상태에서 한 번 실행
-
     // 로그인 실패 시 홈으로 리다이렉션
     return <Navigate to="/" replace />;
   }
-
-  // ⭐️ [추가] 로그인 성공 시 (isLoggedIn이 true일 때):
-  // Ref 값을 false로 재설정하여, 로그아웃 후 다시 접근할 때 메시지가 나오도록 준비
-  useEffect(() => {
-    isAlertShown.current = false;
-  }, [isLoggedIn]); // isLoggedIn이 true로 바뀔 때 실행
 
   // 로그인된 경우, 요청한 컴포넌트를 렌더링합니다.
   return <Element {...rest} />;
@@ -107,14 +104,9 @@ function App() {
             />
 
             {/* 로그인 없이 접근 가능 */}
-            <Route path="reported-pets" element={<LiveCheckPage />} />
             <Route path="missing-pets" element={<MissingCheckPage />} />
             <Route path="witness-pets" element={<WitnessCheckPage />} />
             <Route path="abandoned-pets" element={<StrayDogPage />} />
-
-            {/* 보호소 / 병원 페이지 */}
-            <Route path="shelters" element={<ShelterPage />} />
-            <Route path="hospitals" element={<HospitalPage />} />
 
             {/* 마이페이지 */}
             <Route path="mypage/edit" element={<EditProfilePage />} />
@@ -126,8 +118,16 @@ function App() {
               element={<ProtectedRoute element={CommunityListPage} />}
             />
             <Route
-              path="community/:postId"
+              path="community/:postNum"
               element={<ProtectedRoute element={CommunityDetailPage} />}
+            />
+            <Route
+              path="community/write"
+              element={<ProtectedRoute element={CommunityWritePage} />}
+            />
+            <Route
+              path="community/edit/:postNum"
+              element={<ProtectedRoute element={CommunityEditPage} />}
             />
 
             {/* 소셜 로그인 콜백 */}

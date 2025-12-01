@@ -1,166 +1,219 @@
-// src/pages/community/CommunityListPage.jsx
 import React, { useEffect, useState } from "react";
-import { useNavigate } from "react-router"; // ✅ Link 제거
+import { useNavigate } from "react-router-dom";
 
-const STORAGE_KEY = "community_posts";
+// 백엔드 서버 주소
+const API_BASE_URL = "http://211.188.57.154:4000";
+
+// 게시글 목록 한 페이지에 표시할 개수
+const POSTS_PER_PAGE = 10;
+
+/**
+ * 🛠️ [최종 수정] getAuthInfo 함수
+ * - AuthContext가 사용하는 sessionStorage와 authToken/authUser 키를 읽도록 수정했습니다.
+ */
+function getAuthInfo() {
+  try {
+    // ⭐️ [수정] localStorage 대신 sessionStorage에서 authToken과 rawUser 데이터를 읽습니다.
+    const token = sessionStorage.getItem("authToken");
+    const rawUser = sessionStorage.getItem("authUser");
+
+    // 토큰이나 유저 정보 중 하나라도 없으면 로그아웃 상태
+    if (!token || !rawUser) {
+      return { token: null, userNum: null, nickname: null };
+    }
+
+    const parsedUser = JSON.parse(rawUser);
+
+    // user 객체에는 userNum 또는 id가 있을 수 있습니다.
+    const userNum = parsedUser.userNum ?? parsedUser.id ?? null;
+
+    const nickname =
+      parsedUser.nickname ||
+      parsedUser.displayName ||
+      parsedUser.name ||
+      "익명";
+
+    return { token, userNum, nickname };
+  } catch (e) {
+    console.warn("auth 파싱 실패:", e);
+    return { token: null, userNum: null, nickname: null };
+  }
+}
 
 export default function CommunityListPage() {
   const navigate = useNavigate();
-  const [posts, setPosts] = useState([]);
-  const [formOpen, setFormOpen] = useState(false);
-  const [title, setTitle] = useState("");
-  const [content, setContent] = useState("");
 
-  // 초기 로드: localStorage에서 불러오기
-  useEffect(() => {
-    const saved = localStorage.getItem(STORAGE_KEY);
-    if (!saved) return;
+  // 🔹 로그인 정보
+  const {
+    token,
+    userNum: currentUserNum,
+    nickname: currentNickname,
+  } = getAuthInfo();
+
+  // 🔸 게시글 상태 관리
+  const [posts, setPosts] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  // 🔸 페이지네이션 상태 관리
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [paginatedPosts, setPaginatedPosts] = useState([]);
+
+  // 1. 게시글 데이터 패치
+  const fetchPosts = async () => {
+    setLoading(true);
+    setError(null);
     try {
-      const parsed = JSON.parse(saved);
-      if (Array.isArray(parsed)) setPosts(parsed);
+      const response = await fetch(`${API_BASE_URL}/community/posts`);
+      if (!response.ok) {
+        throw new Error("게시글 목록을 불러오는데 실패했습니다.");
+      }
+      const data = await response.json();
+      setPosts(data);
     } catch (e) {
-      console.warn("Invalid community_posts in localStorage, clearing.");
-      localStorage.removeItem(STORAGE_KEY);
+      console.error(e);
+      setError("게시글 로딩 중 오류 발생");
+    } finally {
+      setLoading(false);
     }
+  };
+
+  useEffect(() => {
+    fetchPosts();
   }, []);
 
-  const persist = (next) => {
-    setPosts(next);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
-  };
+  // 2. 페이지네이션 처리
+  useEffect(() => {
+    const total = posts.length;
+    const totalPagesCount = Math.ceil(total / POSTS_PER_PAGE);
+    setTotalPages(totalPagesCount > 0 ? totalPagesCount : 1);
 
-  const addPost = (e) => {
-    e.preventDefault();
-    if (!title.trim() || !content.trim()) {
-      alert("제목과 내용을 모두 입력해주세요.");
-      return;
+    const startIndex = (currentPage - 1) * POSTS_PER_PAGE;
+    const endIndex = startIndex + POSTS_PER_PAGE;
+    setPaginatedPosts(posts.slice(startIndex, endIndex));
+  }, [posts, currentPage]);
+
+  const goPage = (page) => {
+    if (page >= 1 && page <= totalPages) {
+      setCurrentPage(page);
     }
-    const newPost = {
-      id: Date.now(),
-      title,
-      content,
-      author: "익명",
-      date: new Date().toLocaleString(),
-      comments: [],
-    };
-    const next = [newPost, ...posts];
-    persist(next);
-    setTitle("");
-    setContent("");
-    setFormOpen(false);
   };
 
-  const deletePost = (id) => {
-    if (!confirm("이 글을 삭제할까요?")) return;
-    const next = posts.filter((p) => p.id !== id);
-    persist(next);
+  // 3. 페이지 이동 핸들러
+  const handlePostClick = (postNum) => {
+    navigate(`/community/${postNum}`);
   };
 
-  // 카드 클릭 → 상세페이지 이동
-  const goDetail = (id) => navigate(`/community/${id}`);
+  const handleWriteClick = () => {
+    // 🔍 디버깅: F12 콘솔에서 token과 currentUserNum이 null이 아닌지 확인하세요.
+    console.log("글 작성 시도 - 현재 상태:", { token, currentUserNum });
+
+    // 🟢 [최종 수정] 토큰과 유저 번호 모두 유효하면 통과
+    if (token && currentUserNum !== null) {
+      navigate("/community/write");
+    } else {
+      // 이 메시지가 다시 뜨면 안 됩니다.
+      alert("글을 작성하려면 로그인이 필요합니다.");
+      navigate("/login");
+    }
+  };
+
+  if (loading)
+    return <div className="text-center py-8">게시글을 불러오는 중...</div>;
+  if (error)
+    return <div className="text-center py-8 text-red-500">{error}</div>;
 
   return (
-    <main className="pt-28 pb-16 bg-slate-50 text-slate-800">
-      <section className="container mx-auto px-4 sm:px-6 lg:px-8 max-w-4xl">
-        <div className="flex items-center justify-between mb-6">
-          <h1 className="text-2xl font-extrabold text-slate-800">커뮤니티</h1>
-          <button
-            onClick={() => setFormOpen(!formOpen)}
-            className="px-5 py-2 bg-sky-500 text-white font-semibold rounded-md hover:bg-sky-600 transition"
-          >
-            {formOpen ? "닫기" : "새 글 작성"}
-          </button>
-        </div>
+    // ⭐️ [개선] AdoptionPage의 <main> 태그와 동일하게 상단 여백 (pt-28) 및 배경색 (bg-slate-50) 적용
+    <main className="pt-28 pb-16 bg-slate-50 min-h-screen">
+      <section className="container mx-auto px-4">
+        {/* ⭐️ [개선] AdoptionPage의 콘텐츠 박스와 동일한 스타일 적용 */}
+        <div className="max-w-4xl mx-auto bg-white p-8 rounded-2xl shadow-lg">
+          <h1 className="text-3xl font-extrabold text-sky-500 mb-6">
+            커뮤니티 게시판
+          </h1>
 
-        {/* ✏️ 새 글 작성 폼 */}
-        {formOpen && (
-          <form
-            onSubmit={addPost}
-            className="bg-white border border-slate-200 rounded-xl p-6 mb-8 shadow-sm"
-          >
-            <div className="mb-3">
-              <label className="block text-sm font-semibold text-slate-700 mb-1">
-                제목
-              </label>
-              <input
-                type="text"
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                className="w-full px-4 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-sky-400"
-                placeholder="제목을 입력하세요"
-              />
-            </div>
-            <div className="mb-3">
-              <label className="block text-sm font-semibold text-slate-700 mb-1">
-                내용
-              </label>
-              <textarea
-                rows="5"
-                value={content}
-                onChange={(e) => setContent(e.target.value)}
-                className="w-full px-4 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-sky-400"
-                placeholder="내용을 입력하세요"
-              />
-            </div>
-            <div className="text-right">
-              <button
-                type="submit"
-                className="px-5 py-2 bg-sky-500 text-white rounded-md font-semibold hover:bg-sky-600 transition"
-              >
-                등록
-              </button>
-            </div>
-          </form>
-        )}
-
-        {/* 📋 게시글 목록 (카드 전체 클릭 → 상세) */}
-        {posts.length === 0 ? (
-          <div className="bg-white border border-slate-200 rounded-xl p-10 text-center text-slate-500 shadow-sm">
-            아직 작성된 글이 없습니다. 첫 글을 남겨보세요!
+          <div className="flex justify-end mb-4">
+            <button
+              onClick={handleWriteClick}
+              className="px-4 py-2 bg-sky-500 text-white text-sm font-medium rounded-md hover:bg-sky-600"
+            >
+              글 작성
+            </button>
           </div>
-        ) : (
-          <div className="space-y-4">
-            {posts.map((p) => (
-              <div
-                key={p.id}
-                onClick={() => goDetail(p.id)} // ✅ 카드 전체 클릭
-                className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm hover:shadow-md transition cursor-pointer hover:border-sky-300"
-                role="button"
-                tabIndex={0}
-                onKeyDown={(e) => e.key === "Enter" && goDetail(p.id)}
-              >
-                <div className="flex justify-between items-start gap-4">
-                  <div className="min-w-0">
-                    <h2 className="text-lg font-bold text-slate-800 truncate">
-                      {p.title}
-                    </h2>
-                    <p className="text-sm text-slate-600 mt-1 line-clamp-2">
-                      {p.content}
-                    </p>
-                    <div className="text-xs text-slate-400 flex items-center gap-3 mt-2">
-                      <span>{p.author}</span>
-                      <span>·</span>
-                      <span>{p.date}</span>
-                      <span>·</span>
-                      <span>댓글 {p.comments?.length ?? 0}</span>
-                    </div>
-                  </div>
 
-                  {/* 삭제 버튼만 유지 — 클릭 전파 막기 */}
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      deletePost(p.id);
-                    }}
-                    className="px-3 py-1 rounded-md border text-sm text-slate-600 hover:bg-slate-50"
-                  >
-                    삭제
-                  </button>
-                </div>
+          <div className="space-y-4">
+            {paginatedPosts.length === 0 && (
+              <div className="py-10 text-center text-slate-500">
+                게시글이 없습니다. 첫 글을 작성해보세요!
               </div>
+            )}
+
+            {paginatedPosts.map((post) => (
+              <button
+                key={post.postNum}
+                onClick={() => handlePostClick(post.postNum)}
+                className="w-full text-left p-4 border border-slate-200 rounded-lg hover:bg-slate-50 transition duration-150"
+              >
+                <div className="flex justify-between items-start mb-2">
+                  <h2 className="text-lg font-semibold text-slate-700 truncate mr-4">
+                    <span className="text-sky-600 font-bold mr-2">
+                      [{post.category || "자유"}]
+                    </span>
+                    {post.title}
+                  </h2>
+                  <span className="text-xs text-slate-400 flex-shrink-0">
+                    {new Date(post.createdAt).toLocaleDateString()}
+                  </span>
+                </div>
+                <p className="text-sm text-slate-500 line-clamp-2 mb-2">
+                  {post.content}
+                </p>
+                <div className="text-xs text-slate-400 flex items-center">
+                  <span>작성자: {post.nickname || "익명"}</span>
+                  <span className="mx-2 text-slate-300">·</span>
+                  <span>댓글 {post.commentCount ?? 0}</span>
+                </div>
+              </button>
             ))}
           </div>
-        )}
+
+          {/* 페이지네이션 */}
+          {posts.length > 0 && (
+            <div className="mt-6 flex items-center justify-center gap-1 text-sm">
+              <button
+                onClick={() => goPage(currentPage - 1)}
+                disabled={currentPage === 1}
+                className="px-3 py-1 border rounded-md disabled:opacity-40 disabled:cursor-default hover:bg-slate-50"
+              >
+                이전
+              </button>
+              {Array.from({ length: totalPages }, (_, idx) => idx + 1).map(
+                (page) => (
+                  <button
+                    key={page}
+                    onClick={() => goPage(page)}
+                    className={`px-3 py-1 border rounded-md ${
+                      page === currentPage
+                        ? "bg-sky-500 text-white border-sky-500"
+                        : "hover:bg-slate-50"
+                    }`}
+                  >
+                    {page}
+                  </button>
+                )
+              )}
+              <button
+                onClick={() => goPage(currentPage + 1)}
+                disabled={currentPage === totalPages}
+                className="px-3 py-1 border rounded-md disabled:opacity-40 disabled:cursor-default hover:bg-slate-50"
+              >
+                다음
+              </button>
+            </div>
+          )}
+        </div>
       </section>
     </main>
   );

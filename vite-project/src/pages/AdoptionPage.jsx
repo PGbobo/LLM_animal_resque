@@ -96,11 +96,14 @@ function ImageSearchTab({ setIsLoading, navigate }) {
 
     try {
       const imageBase64 = await fileToBase64(photoFile);
-      const aiResp = await fetch(`http://localhost:4000/api/proxy/search`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ image_base64: imageBase64 }),
-      });
+      const aiResp = await fetch(
+        `http://211.188.57.154:4000/api/proxy/search`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ image_base64: imageBase64 }),
+        }
+      );
 
       if (!aiResp.ok) {
         const errorData = await aiResp.json().catch(() => ({}));
@@ -112,6 +115,7 @@ function ImageSearchTab({ setIsLoading, navigate }) {
         state: {
           results: aiData.results,
           source: "adopt",
+          searchMethod: "image",
           returnTo: "/adopt",
         },
       });
@@ -193,18 +197,60 @@ function CriteriaSearchTab({ setIsLoading, navigate }) {
 
   // ◀◀ [신규] 폼이 바뀔 때마다 문장을 자동으로 조합 (자동완성)
   useEffect(() => {
-    let parts = [];
-    // (자연스러운 문장 연결을 위해 조사 처리 등은 생략하고 간단히 나열)
-    parts.push(species);
-    if (age) parts.push(`${age} 나이대의`);
-    if (bodySize) parts.push(`${bodySize} 체형의`);
-    if (furLength) parts.push(`${furLength}의`);
-    if (furColor) parts.push(`${furColor} 털을 가진`);
-    if (breed) parts.push(`품종은 ${breed}인`);
+    const parts = [];
 
-    // 기본 문장 생성
-    let autoSentence = parts.join(" ") + " 동물을 찾고 싶어요.";
-    setFinalQuery(autoSentence);
+    // 1. [수정] 나이 (Age)
+    // "새끼" 선택 시 "어린"으로 표현 변경
+    if (age) {
+      const ageTerm = age === "새끼" ? "어린" : age;
+      parts.push(`${ageTerm} 나이대의`);
+    }
+
+    // 2. 체형 (Body Size)
+    if (bodySize) {
+      parts.push(`${bodySize} 체형의`);
+    }
+
+    // 3. [수정] 털 (Fur) - 길이와 색상 융합 로직
+    // "단모(짧은 털)" -> "짧은", "장모(긴 털)" -> "긴" 으로 형용사화
+    let cleanFurLen = "";
+    if (furLength.includes("단모")) cleanFurLen = "짧은";
+    else if (furLength.includes("장모")) cleanFurLen = "긴";
+
+    if (furColor && cleanFurLen) {
+      // 둘 다 입력: "흰색의 짧은 털을 가진"
+      parts.push(`${furColor}의 ${cleanFurLen} 털을 가진`);
+    } else if (furColor) {
+      // 색깔만 입력: "흰색 털을 가진"
+      parts.push(`${furColor} 털을 가진`);
+    } else if (cleanFurLen) {
+      // 길이만 입력: "짧은 털을 가진"
+      parts.push(`${cleanFurLen} 털을 가진`);
+    }
+
+    // 4. [수정] 대상 (Target) - 품종 우선 적용
+    // 품종(breed)이 있으면 품종을 쓰고, 없으면 종(species: 개/고양이) 사용
+    const target = breed && breed.trim() !== "" ? breed : species;
+
+    // (옵션) 한글 조사 '을/를' 자동 처리 (받침 유무 확인)
+    const hasBatchim = (word) => {
+      if (!word) return false;
+      const lastChar = word.charCodeAt(word.length - 1);
+      // 한글 유니코드 범위 내에 있고, 받침이 있으면 true
+      return (lastChar - 0xac00) % 28 > 0;
+    };
+    const particle = hasBatchim(target) ? "을" : "를";
+
+    // 최종 문장 조합
+    // 예: "어린 나이대의 소형 체형의 흰색의 짧은 털을 가진 말티즈를 찾고 싶어요."
+    const description = parts.join(" ");
+
+    // 설명이 아예 없으면 "말티즈를 찾고 싶어요." 처럼만 나옴
+    const finalSentence = description
+      ? `${description} ${target}${particle} 찾고 싶어요.`
+      : `${target}${particle} 찾고 싶어요.`;
+
+    setFinalQuery(finalSentence);
   }, [species, age, bodySize, furLength, furColor, breed]);
 
   // 검색 제출
@@ -221,7 +267,7 @@ function CriteriaSearchTab({ setIsLoading, navigate }) {
     console.log("최종 전송 쿼리:", finalQuery);
 
     try {
-      const aiResp = await fetch(`http://localhost:4000/api/proxy/adapt`, {
+      const aiResp = await fetch(`http://211.188.57.154:4000/api/proxy/adapt`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ query_text: finalQuery }), // ◀ 수정한 문장을 그대로 전송
@@ -238,6 +284,7 @@ function CriteriaSearchTab({ setIsLoading, navigate }) {
         state: {
           results: aiData.results,
           source: "adopt",
+          searchMethod: "text",
           returnTo: "/adopt",
         },
       });

@@ -146,7 +146,7 @@ export default function ReportPage() {
   const [activeTab, setActiveTab] = useState("photo");
   const [isLoading, setIsLoading] = useState(false);
 
-  const API_BASE = "http://localhost:4000";
+  const API_BASE = "http://211.188.57.154:4000";
   const AI_SERVER_URL = `${API_BASE}/api/proxy/report_sighting`;
 
   // --- 공통 제출 핸들러 ---

@@ -22,9 +22,12 @@ export function AuthProvider({ children }) {
       if (token) {
         try {
           // ⭐️ 백엔드 /api/users/me 호출 (index.js에 구현됨)
-          const response = await fetch("http://localhost:4000/api/users/me", {
-            headers: { Authorization: `Bearer ${token}` },
-          });
+          const response = await fetch(
+            "http://211.188.57.154:4000/api/users/me",
+            {
+              headers: { Authorization: `Bearer ${token}` },
+            }
+          );
           const data = await response.json();
 
           if (data.success) {

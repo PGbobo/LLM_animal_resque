@@ -10,7 +10,8 @@ import defaultOtherImg from "../assets/images/default_other.png";
 
 // 백엔드 API 기본 주소
 const API_BASE =
-  import.meta.env?.VITE_API_BASE?.replace(/\/$/, "") || "http://localhost:4000";
+  import.meta.env?.VITE_API_BASE?.replace(/\/$/, "") ||
+  "http://211.188.57.154:4000";
 
 // "몇 분 전" 형식
 function timeAgo(input) {

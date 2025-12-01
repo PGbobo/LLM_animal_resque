@@ -20,6 +20,7 @@ export default function SearchResultPage() {
     results: originalResults,
     returnTo = "/",
     source = "default",
+    searchMethod = "unknown",
   } = location.state || {};
 
   // 2. ◀◀ [수정] 'source'에 따라 임계값(Threshold) 동적 설정
@@ -45,18 +46,50 @@ export default function SearchResultPage() {
       "회원님의 취향과 가장 유사한 보호소 동물을 추천해 드립니다.";
   }
 
-  // 4. 동적 임계값으로 필터링
+  // 4. 동적 임계값으로 필터링 (+ 중복 제거 및 점수 보정)
   const filteredResults = React.useMemo(() => {
     if (!Array.isArray(originalResults)) return [];
-    return originalResults.filter(
-      (item) => item && item.score >= similarityThreshold
-    );
-  }, [originalResults, similarityThreshold]);
+
+    // 중복 제거를 위한 Set (식별자로 filename 또는 id 사용)
+    const seenIds = new Set();
+    const processed = [];
+
+    originalResults.forEach((item) => {
+      if (!item) return;
+
+      // [1] 중복 체크 (식별자: filename이 가장 확실함)
+      // 제보('report') 등 결과 중복 방지
+      const uniqueKey = item.filename; // 혹은 item.idx가 있다면 그것 사용
+      if (seenIds.has(uniqueKey)) {
+        return; // 이미 담은 항목이면 건너뜀
+      }
+
+      // [2] 점수 보정 로직 (입양('adopt')인 경우 +30%)
+      // 텍스트 검색 등의 경우 유사도가 낮게 나올 수 있어 일시 보정
+      let finalScore = item.score;
+      if (source === "adopt" && searchMethod === "text") {
+        finalScore = Math.min(finalScore + 0.3, 1.0); // 조건 검색일 때만 가산점
+      }
+
+      // [3] 임계값 필터링 및 리스트 추가
+      if (finalScore >= similarityThreshold) {
+        seenIds.add(uniqueKey); // 중복 방지 목록에 등록
+        // 원본 객체 훼손 방지를 위해 새로운 객체 생성
+        processed.push({
+          ...item,
+          score: finalScore,
+        });
+      }
+    });
+
+    return processed;
+  }, [originalResults, similarityThreshold, source, searchMethod]);
 
   // 5. (헬퍼 함수) 파일명에서 '이름' 추출하기
   // 예: "abandon/missing/5_개새_1762936443522.jpeg" -> "개새"
   const extractNameFromFilename = (filename) => {
     try {
+      if (!filename) return "이름 미상";
       // 1. 경로가 있다면 파일명만 분리
       const fileOnly = filename.split("/").pop(); // "5_개새_1762936443522.jpeg"
       // 2. 언더바(_)로 분리
@@ -127,7 +160,8 @@ export default function SearchResultPage() {
 
               // (입양 링크 로직 유지)
               if (
-                source === "adopt" &&
+                (source === "adopt" || source === "register") &&
+                item.filename &&
                 item.filename.includes("crawled_data")
               ) {
                 try {
@@ -178,13 +212,16 @@ export default function SearchResultPage() {
                         <>
                           <p className="font-bold text-slate-800 text-lg">
                             이름:{" "}
-                            <span className="text-red-500">
-                              {item.petName || "이름 미상"}
+                            <span className="text-black-500">
+                              {item.petName || extractedName || "이름 미상"}
                             </span>
                           </p>
                           <p className="text-sm text-slate-600 mt-1 flex items-center">
                             <MapPinIcon className="w-4 h-4 mr-1 text-gray-400" />
-                            실종 위치: {item.location || "위치 정보 없음"}
+                            실종 위치:{" "}
+                            {item.location ||
+                              item.lost_location ||
+                              "위치 정보 없음"}
                           </p>
                         </>
                       ) : (

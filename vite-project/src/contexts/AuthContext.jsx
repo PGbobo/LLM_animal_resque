@@ -26,9 +26,12 @@ export function AuthProvider({ children }) {
     const fetchUserOnLoad = async () => {
       try {
         // 1. API를 호출하여 토큰이 유효한지 '검증'합니다.
-        const response = await fetch("http://localhost:4000/api/users/me", {
-          headers: { Authorization: `Bearer ${token}` },
-        });
+        const response = await fetch(
+          "http://211.188.57.154:4000/api/users/me",
+          {
+            headers: { Authorization: `Bearer ${token}` },
+          }
+        );
         const data = await response.json();
 
         if (data.success) {
@@ -124,6 +127,7 @@ export function AuthProvider({ children }) {
     login,
     loginWithGoogle,
     logout,
+    setUser,
   };
 
   return (

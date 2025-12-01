@@ -4,7 +4,7 @@ import React, { useState, useEffect } from "react";
 import { useAuth } from "../hooks/useAuth.js";
 
 // ◀◀ [신규] 4000번 서버 API 주소
-const API_BASE = "http://localhost:4000";
+const API_BASE = "http://211.188.57.154:4000";
 
 // ---------------------------------------------------
 // ◀◀ [신규] 관리자 페이지용 아이템 카드 (내부 컴포넌트)
