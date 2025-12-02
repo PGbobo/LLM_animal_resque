@@ -47,16 +47,46 @@ export default function RegisterPetPage() {
   const API_BASE = "http://211.188.57.154:4000";
   const AI_BASE = "http://211.188.57.154";
 
-  // 사진 변경
-  const onPhotoChange = (e) => {
+  // 2️⃣ [수정] 사진 변경 핸들러 (압축 로직 적용)
+  const onPhotoChange = async (e) => {
     const file = e.target.files?.[0];
-    setPhotoFile(file || null);
-    if (file) {
+    if (!file) {
+      setPhotoFile(null);
+      setPhotoPreview("");
+      return;
+    }
+
+    // 압축 옵션 설정 (최대 1MB, 폭 1024px)
+    const options = {
+      maxSizeMB: 1,
+      maxWidthOrHeight: 1024,
+      useWebWorker: true,
+    };
+
+    try {
+      console.log(`원본 크기: ${(file.size / 1024 / 1024).toFixed(2)} MB`);
+
+      // 이미지 압축 수행
+      const compressedFile = await imageCompression(file, options);
+
+      console.log(
+        `압축 후 크기: ${(compressedFile.size / 1024 / 1024).toFixed(2)} MB`
+      );
+
+      // 압축된 파일을 상태에 저장
+      setPhotoFile(compressedFile);
+
+      // 미리보기 생성
+      const reader = new FileReader();
+      reader.onload = (ev) => setPhotoPreview(String(ev.target?.result || ""));
+      reader.readAsDataURL(compressedFile);
+    } catch (error) {
+      console.error("이미지 압축 실패:", error);
+      // 압축 실패 시 원본 사용 (안전장치)
+      setPhotoFile(file);
       const reader = new FileReader();
       reader.onload = (ev) => setPhotoPreview(String(ev.target?.result || ""));
       reader.readAsDataURL(file);
-    } else {
-      setPhotoPreview("");
     }
   };
 

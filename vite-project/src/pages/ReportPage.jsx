@@ -455,28 +455,76 @@ function PhotoReportTab({ onSubmit }) {
 // 5. [탭 2] 글로 제보 컴포넌트 (입양 페이지 스타일 적용!)
 // ---------------------------------------------------------------------
 function TextReportTab({ onSubmit }) {
+  // 1. 기본 정보 (제출용)
   const [title, setTitle] = useState("");
   const [seenDate, setSeenDate] = useState("");
   const [address, setAddress] = useState("");
   const [coords, setCoords] = useState({ lat: null, lon: null });
   const [contact, setContact] = useState("");
 
+  // 2. 상세 특징 (입양 페이지와 동일한 6개 옵션 + 주요 특징)
   const [species, setSpecies] = useState("개");
-  const [size, setSize] = useState("");
-  const [color, setColor] = useState("");
-  const [feature, setFeature] = useState("");
-  const [desc, setDesc] = useState("");
+  const [age, setAge] = useState(""); // (새끼/성체)
+  const [bodySize, setBodySize] = useState(""); // (소형/중형/대형)
+  const [furLength, setFurLength] = useState(""); // (단모/장모)
+  const [furColor, setFurColor] = useState(""); // (색상 직접 입력)
+  const [breed, setBreed] = useState(""); // (품종 직접 입력)
+  const [feature, setFeature] = useState(""); // (주요 특징)
 
+  const [desc, setDesc] = useState(""); // 자동 생성될 설명 (AI 전송용)
+
+  // 3. 문장 자동 생성 로직 (AdoptionPage 로직 + 목격 제보형 어미)
   useEffect(() => {
     const parts = [];
-    parts.push(species);
-    if (size) parts.push(`${size} 크기의`);
-    if (color) parts.push(`${color} 털을 가진`);
-    if (feature) parts.push(`특징은 ${feature}입니다.`);
-    const autoText =
-      parts.join(" ") + (parts.length > 1 ? " 동물을 목격했습니다." : "");
-    setDesc(autoText);
-  }, [species, size, color, feature]);
+
+    // (1) 나이: "새끼" -> "어린"으로 변환하여 자연스럽게
+    if (age) {
+      const ageTerm = age === "새끼" ? "어린" : age;
+      parts.push(`${ageTerm} 나이대의`);
+    }
+
+    // (2) 체형
+    if (bodySize) {
+      parts.push(`${bodySize} 체형의`);
+    }
+
+    // (3) 털 (길이 + 색상 조합)
+    let cleanFurLen = "";
+    if (furLength.includes("단모")) cleanFurLen = "짧은";
+    else if (furLength.includes("장모")) cleanFurLen = "긴";
+
+    if (furColor && cleanFurLen) {
+      parts.push(`${furColor}의 ${cleanFurLen} 털을 가진`);
+    } else if (furColor) {
+      parts.push(`${furColor} 털을 가진`);
+    } else if (cleanFurLen) {
+      parts.push(`${cleanFurLen} 털을 가진`);
+    }
+
+    // (4) 대상 (품종이 있으면 품종 우선, 없으면 종류)
+    const target = breed && breed.trim() !== "" ? breed : species;
+
+    // (5) 한글 조사 '을/를' 자동 처리
+    const hasBatchim = (word) => {
+      if (!word) return false;
+      const lastChar = word.charCodeAt(word.length - 1);
+      return (lastChar - 0xac00) % 28 > 0;
+    };
+    const particle = hasBatchim(target) ? "을" : "를";
+
+    // (6) 문장 조합
+    const mainDesc = parts.join(" ");
+    let autoSentence = mainDesc
+      ? `${mainDesc} ${target}${particle} 목격했습니다.`
+      : `${target}${particle} 목격했습니다.`;
+
+    // (7) 주요 특징 추가 (자연스럽게 연결)
+    if (feature && feature.trim()) {
+      autoSentence += `\n(특이 사항: ${feature} 등의 특징이 있습니다)`;
+    }
+
+    setDesc(autoSentence);
+  }, [species, age, bodySize, furLength, furColor, breed, feature]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -511,15 +559,17 @@ function TextReportTab({ onSubmit }) {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-8 animate-fade-in">
-      {/* --- 섹션 1: 특징 선택 (AdoptionPage 스타일) --- */}
+      {/* --- 섹션 1: 상세 특징 선택 (6가지 옵션 + 특징) --- */}
       <div className="bg-slate-50 p-6 rounded-xl border border-slate-200">
         <h3 className="text-lg font-bold text-slate-700 mb-4 flex items-center">
           <span className="bg-sky-400 text-white w-6 h-6 rounded-full inline-flex items-center justify-center text-sm mr-2">
             1
           </span>
-          기본 조건 선택
+          목격한 동물 특징 묘사
         </h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+
+        {/* 4분할 그리드 (종류, 나이, 체형, 털길이) */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
           <FormSelect
             label="종류"
             value={species}
@@ -529,24 +579,55 @@ function TextReportTab({ onSubmit }) {
             <option value="고양이">고양이</option>
             <option value="기타">기타</option>
           </FormSelect>
+
           <FormSelect
-            label="크기"
-            value={size}
-            onChange={(e) => setSize(e.target.value)}
+            label="나이대(추정)"
+            value={age}
+            onChange={(e) => setAge(e.target.value)}
           >
-            <option value="">(모름)</option>
+            <option value="">(잘 모름)</option>
+            <option value="새끼">새끼</option>
+            <option value="성체">성체</option>
+          </FormSelect>
+
+          <FormSelect
+            label="체형"
+            value={bodySize}
+            onChange={(e) => setBodySize(e.target.value)}
+          >
+            <option value="">(잘 모름)</option>
             <option value="소형">소형</option>
             <option value="중형">중형</option>
             <option value="대형">대형</option>
           </FormSelect>
+
+          <FormSelect
+            label="털 길이"
+            value={furLength}
+            onChange={(e) => setFurLength(e.target.value)}
+          >
+            <option value="">(잘 모름)</option>
+            <option value="단모(짧은 털)">단모 (짧은 털)</option>
+            <option value="장모(긴 털)">장모 (긴 털)</option>
+          </FormSelect>
+        </div>
+
+        {/* 3분할 그리드 (색상, 품종, 주요특징) */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <FormInput
-            label="색상"
-            value={color}
-            onChange={(e) => setColor(e.target.value)}
-            placeholder="예) 흰색, 검정"
+            label="털 색상"
+            value={furColor}
+            onChange={(e) => setFurColor(e.target.value)}
+            placeholder="예) 흰색, 갈색 점박이"
           />
           <FormInput
-            label="주요 특징"
+            label="품종(추정)"
+            value={breed}
+            onChange={(e) => setBreed(e.target.value)}
+            placeholder="예) 말티즈, 리트리버"
+          />
+          <FormInput
+            label="기타 주요 특징"
             value={feature}
             onChange={(e) => setFeature(e.target.value)}
             placeholder="예) 꼬리가 김"
@@ -554,36 +635,37 @@ function TextReportTab({ onSubmit }) {
         </div>
       </div>
 
-      {/* --- 섹션 2: AI 메시지 (AdoptionPage 스타일) --- */}
+      {/* --- 섹션 2: AI 메시지 확인 --- */}
       <div className="bg-sky-50 p-6 rounded-xl border border-sky-100">
         <h3 className="text-lg font-bold text-sky-600 mb-2 flex items-center">
           <span className="bg-sky-500 text-white w-6 h-6 rounded-full inline-flex items-center justify-center text-sm mr-2">
             2
           </span>
-          AI에게 보낼 요청 메시지 (수정 가능)
+          AI에게 보낼 제보 내용 (자동 생성)
         </h3>
         <p className="text-sm text-slate-500 mb-3">
-          위에서 선택한 조건이 아래에 자동으로 문장으로 만들어집니다.
+          선택한 특징을 바탕으로 문장을 만들었습니다. 내용이 맞는지
+          확인해주세요.
           <br />
-          <strong>원하는 내용을 자유롭게 추가하거나 수정해보세요!</strong>
+          <strong>필요하다면 내용을 직접 수정하셔도 됩니다!</strong>
         </p>
         <textarea
           rows={4}
           value={desc}
           onChange={(e) => setDesc(e.target.value)}
           className="w-full h-32 p-4 border border-sky-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-sky-400 bg-white text-lg text-slate-800 resize-none"
-          placeholder="위에서 선택하면 자동으로 작성됩니다."
+          placeholder="위 특징을 선택하면 자동으로 작성됩니다."
         />
       </div>
 
-      {/* --- 섹션 3: 필수 정보 (기존 유지) --- */}
+      {/* --- 섹션 3: 필수 정보 --- */}
       <div className="border-t pt-6">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-4">
           <FormInput
-            label="제목"
+            label="글 제목"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
-            placeholder="예) OO동 놀이터 강아지"
+            placeholder="예) OO동 놀이터 강아지 목격"
           />
           <FormInput
             label="연락처"
@@ -601,7 +683,7 @@ function TextReportTab({ onSubmit }) {
             type="date"
             value={seenDate}
             onChange={(e) => setSeenDate(e.target.value)}
-            onClick={(e) => e.target.showPicker()} // ◀ 날짜 클릭 시 달력 표시
+            onClick={(e) => e.target.showPicker()}
             className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-sky-200 cursor-pointer"
           />
         </div>
