@@ -117,6 +117,9 @@ npm start
 ### 결과 화면
 <img width="426" height="543" alt="image" src="https://github.com/user-attachments/assets/8fe566d9-bf03-4ac2-b515-c902e5200f50" />
 
+### 유기동물 조회 화면
+<img width="751" height="1100" alt="connectdog kro kr_adopt (2)" src="https://github.com/user-attachments/assets/bb4575c4-5fcd-4641-bd28-c4ad7ad8d5f3" />
+
 ---
 
 ## 🚨 트러블 슈팅
