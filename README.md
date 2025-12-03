@@ -106,7 +106,7 @@ npm start
 <img width="458" height="543" alt="image" src="https://github.com/user-attachments/assets/b947d36b-c5f7-4093-9c59-9851fc88e388" />
 
 ### 제보 화면
-<img width="444" height="543" alt="image" src="https://github.com/user-attachments/assets/497d948f-d851-42a7-a80d-8a155e7686a5" />
+<img width="751" height="1100" alt="connectdog kro kr_adopt (2)" src="https://github.com/user-attachments/assets/859b2b79-86c7-423f-a870-e328961e367f" />
 
 ### 제보 위치 화면
 <img width="751" height="500" alt="image" src="https://github.com/user-attachments/assets/c3d53048-a376-432e-b5c3-f588ce3d3c53" />
